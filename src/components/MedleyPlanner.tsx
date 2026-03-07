@@ -91,6 +91,11 @@ export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReo
               Auto-Arrange
             </button>
           )}
+          {songs.length > 0 && onReplaceSongs && (
+            <button onClick={() => { if (window.confirm(`Remove all ${songs.length} songs from medley?`)) onReplaceSongs([]); }} style={styles.clearBtn}>
+              Clear All
+            </button>
+          )}
           <span style={styles.statBadge}>{songs.length} songs</span>
           <span style={{ ...styles.statBadge, background: totalSeconds > 53 * 60 ? 'var(--red)' : totalSeconds > 45 * 60 ? 'var(--amber)' : 'var(--green)', color: '#000' }}>
             {totalMinutes}:{remainingSeconds.toString().padStart(2, '0')}
@@ -453,6 +458,17 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
     width: '100%',
     letterSpacing: 0.5,
+  },
+  clearBtn: {
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '5px 10px',
+    borderRadius: 6,
+    border: '1px solid var(--red)',
+    background: 'transparent',
+    color: 'var(--red)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   arrangeBanner: {
     fontSize: 10,
