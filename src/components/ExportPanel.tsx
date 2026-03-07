@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { MedleySong, EasterEgg } from '../types';
 import { getCamelotCode } from '../camelot';
+import { exportAbletonAls, type AbletonVersion } from '../ableton';
 
 interface ExportPanelProps {
   songs: MedleySong[];
@@ -117,6 +119,7 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 export default function ExportPanel({ songs, eggs }: ExportPanelProps) {
+  const [abletonVersion, setAbletonVersion] = useState<AbletonVersion>('11');
   const totalSeconds = songs.reduce((s, song) => s + song.snippet_duration, 0);
 
   return (
@@ -163,6 +166,30 @@ export default function ExportPanel({ songs, eggs }: ExportPanelProps) {
         >
           Export JSON
         </button>
+
+        <div style={styles.abletonRow}>
+          <button
+            onClick={() => exportAbletonAls(songs, abletonVersion)}
+            disabled={songs.length === 0}
+            style={styles.abletonBtn}
+          >
+            Export Ableton .als
+          </button>
+          <div style={styles.versionToggle}>
+            <button
+              onClick={() => setAbletonVersion('11')}
+              style={abletonVersion === '11' ? styles.versionActive : styles.versionInactive}
+            >
+              11
+            </button>
+            <button
+              onClick={() => setAbletonVersion('12')}
+              style={abletonVersion === '12' ? styles.versionActive : styles.versionInactive}
+            >
+              12
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -189,5 +216,38 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: 6,
+  },
+  abletonRow: {
+    display: 'flex',
+    gap: 6,
+    alignItems: 'stretch',
+    marginTop: 4,
+  },
+  abletonBtn: {
+    flex: 1,
+  },
+  versionToggle: {
+    display: 'flex',
+    borderRadius: 4,
+    overflow: 'hidden',
+    border: '1px solid var(--border)',
+  },
+  versionActive: {
+    padding: '4px 10px',
+    fontSize: 11,
+    fontWeight: 700,
+    border: 'none',
+    background: 'var(--text-primary)',
+    color: 'var(--bg-primary)',
+    cursor: 'pointer',
+  },
+  versionInactive: {
+    padding: '4px 10px',
+    fontSize: 11,
+    fontWeight: 600,
+    border: 'none',
+    background: 'var(--bg-tertiary)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
   },
 };
