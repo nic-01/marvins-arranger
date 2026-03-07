@@ -6,10 +6,9 @@
  * choosing transitions, detecting mashup opportunities, and shaping energy arcs.
  */
 
-import type { MedleySong, TransitionType } from './types';
+import type { MedleySong } from './types';
 import {
   getCamelotDistance,
-  getEffectiveBpm,
   getEffectiveBpmDiff,
   isHalfDoubleTime,
   areKeysCompatible,
@@ -165,11 +164,6 @@ function optimizeDecadeBoundaries(groups: DecadeGroup[]): void {
 }
 
 // ── Bar count assignment ────────────────────────────────────────────────────
-
-interface DecadeTimeBudget {
-  label: string;
-  targetMinutes: number;
-}
 
 // Target times per decade section (rough guidelines)
 const DECADE_TARGETS: Record<string, number> = {
@@ -341,7 +335,6 @@ function assignTransitions(songs: MedleySong[]): void {
     const curr = songs[i];
     const bpmDiff = getEffectiveBpmDiff(prev.bpm, curr.bpm);
     const keysCompat = areKeysCompatible(prev.key, curr.key);
-    const keyDist = getCamelotDistance(prev.key, curr.key);
 
     // Check for half/double-time relationship
     const halfDouble = isHalfDoubleTime(prev.bpm, curr.bpm);
@@ -398,7 +391,6 @@ function assignTempoTreatments(songs: MedleySong[]): void {
 
     const prev = songs[i - 1];
     const bpmDiff = getEffectiveBpmDiff(prev.bpm, song.bpm);
-    const effectivePrevBpm = getEffectiveBpm(prev.bpm, song.bpm);
 
     if (isHalfDoubleTime(prev.bpm, song.bpm)) {
       if (song.bpm > prev.bpm) {
