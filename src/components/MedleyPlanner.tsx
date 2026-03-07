@@ -86,20 +86,17 @@ export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReo
       <div style={styles.header}>
         <h2 style={styles.title}>Medley Planner</h2>
         <div style={styles.stats}>
+          {songs.length >= 2 && onReplaceSongs && (
+            <button onClick={handleAutoArrange} style={styles.arrangeBtn}>
+              Auto-Arrange
+            </button>
+          )}
           <span style={styles.statBadge}>{songs.length} songs</span>
           <span style={{ ...styles.statBadge, background: totalSeconds > 53 * 60 ? 'var(--red)' : totalSeconds > 45 * 60 ? 'var(--amber)' : 'var(--green)', color: '#000' }}>
             {totalMinutes}:{remainingSeconds.toString().padStart(2, '0')}
           </span>
         </div>
       </div>
-
-      {songs.length >= 2 && onReplaceSongs && (
-        <div style={styles.arrangeBar}>
-          <button onClick={handleAutoArrange} style={styles.arrangeBtn}>
-            Auto-Arrange
-          </button>
-        </div>
-      )}
 
       {arrangeResult && (
         <div style={styles.arrangeBanner}>
@@ -292,10 +289,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     padding: '12px 16px 8px',
   },
-  arrangeBar: {
-    padding: '0 16px 8px',
-    flexShrink: 0,
-  },
+  arrangeBar: {},
   title: {
     fontSize: 16,
     fontWeight: 700,
@@ -448,9 +442,9 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
   },
   arrangeBtn: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: 700,
-    padding: '8px 16px',
+    padding: '5px 10px',
     borderRadius: 6,
     border: 'none',
     background: 'linear-gradient(135deg, #748ffc, #da77f2)',
