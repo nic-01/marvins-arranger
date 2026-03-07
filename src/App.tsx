@@ -266,7 +266,7 @@ function App() {
 // ── Mobile styles ──
 const mStyles: Record<string, React.CSSProperties> = {
   app: {
-    height: '100vh',
+    height: '100dvh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -312,7 +312,7 @@ const mStyles: Record<string, React.CSSProperties> = {
     background: 'var(--bg-secondary)',
     borderTop: '1px solid var(--border)',
     flexShrink: 0,
-    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)',
   },
   tabBtn: {
     flex: 1,
