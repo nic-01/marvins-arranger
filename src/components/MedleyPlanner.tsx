@@ -84,18 +84,20 @@ export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReo
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Medley Planner</h2>
-        <div style={styles.stats}>
-          <span style={styles.statBadge}>{songs.length} songs</span>
-          <span style={{ ...styles.statBadge, background: totalSeconds > 53 * 60 ? 'var(--red)' : totalSeconds > 45 * 60 ? 'var(--amber)' : 'var(--green)', color: '#000' }}>
-            {totalMinutes}:{remainingSeconds.toString().padStart(2, '0')}
-          </span>
-          {songs.length >= 2 && onReplaceSongs && (
-            <button onClick={handleAutoArrange} style={styles.arrangeBtn}>
-              Auto-Arrange
-            </button>
-          )}
+        <div style={styles.headerTop}>
+          <h2 style={styles.title}>Medley Planner</h2>
+          <div style={styles.stats}>
+            <span style={styles.statBadge}>{songs.length} songs</span>
+            <span style={{ ...styles.statBadge, background: totalSeconds > 53 * 60 ? 'var(--red)' : totalSeconds > 45 * 60 ? 'var(--amber)' : 'var(--green)', color: '#000' }}>
+              {totalMinutes}:{remainingSeconds.toString().padStart(2, '0')}
+            </span>
+          </div>
         </div>
+        {songs.length >= 2 && onReplaceSongs && (
+          <button onClick={handleAutoArrange} style={styles.arrangeBtn}>
+            Auto-Arrange
+          </button>
+        )}
       </div>
 
       {arrangeResult && (
@@ -285,9 +287,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    padding: '12px 16px 8px',
+  },
+  headerTop: {
+    display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '12px 16px 8px',
   },
   title: {
     fontSize: 16,
@@ -441,15 +448,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
   },
   arrangeBtn: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 700,
-    padding: '3px 12px',
-    borderRadius: 4,
+    padding: '8px 16px',
+    borderRadius: 6,
     border: 'none',
     background: 'linear-gradient(135deg, #748ffc, #da77f2)',
     color: '#fff',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
+    width: '100%',
+    letterSpacing: 0.5,
   },
   arrangeBanner: {
     fontSize: 10,
