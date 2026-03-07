@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Song, MedleySong, EasterEgg } from './types';
 import SongBrowser from './components/SongBrowser';
 import MedleyPlanner from './components/MedleyPlanner';
@@ -9,17 +9,31 @@ import { allSongs } from './data';
 
 type Tab = 'planner' | 'arrangement';
 type RightTab = 'eggs' | 'export';
+type MobilePanel = 'browse' | 'planner' | 'arrangement' | 'eggs' | 'export';
+
+function useIsMobile(breakpoint = 768): boolean {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
 function App() {
+  const isMobile = useIsMobile();
   const [medleySongs, setMedleySongs] = useState<MedleySong[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('planner');
   const [rightTab, setRightTab] = useState<RightTab>('eggs');
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('browse');
 
-  // Initialize Easter eggs from defaults
   const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(() =>
     DEFAULT_EGGS.map((egg) => ({ ...egg, id: generateId() }))
   );
@@ -41,10 +55,8 @@ function App() {
       crowd_moment: song.crowd_singalong,
       easter_egg: false,
     };
-
     setMedleySongs((prev) => {
       const updated = [...prev, medleySong];
-      // Enforce chronological order
       updated.sort((a, b) => a.year - b.year || a.title.localeCompare(b.title));
       return updated;
     });
@@ -64,11 +76,8 @@ function App() {
     setMedleySongs((prev) => {
       const idx = prev.findIndex((s) => s.medleyId === medleyId);
       if (idx === -1) return prev;
-
       const newIdx = direction === 'up' ? idx - 1 : idx + 1;
       if (newIdx < 0 || newIdx >= prev.length) return prev;
-
-      // Swap but maintain chronological awareness
       const updated = [...prev];
       [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
       return updated;
@@ -89,9 +98,89 @@ function App() {
     );
   }, []);
 
+  // ── Mobile layout ──
+  if (isMobile) {
+    const totalSeconds = medleySongs.reduce((s, song) => s + song.snippet_duration, 0);
+    const totalMin = Math.floor(totalSeconds / 60);
+    const totalSec = totalSeconds % 60;
+
+    return (
+      <div style={mStyles.app}>
+        {/* Mobile header */}
+        <div style={mStyles.header}>
+          <h1 style={mStyles.logo}>100 Years' Medley</h1>
+          <div style={mStyles.headerStats}>
+            <span style={mStyles.headerBadge}>{medleySongs.length} in medley</span>
+            {medleySongs.length > 0 && (
+              <span style={mStyles.headerBadge}>{totalMin}:{totalSec.toString().padStart(2, '0')}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile content */}
+        <div style={mStyles.content}>
+          {mobilePanel === 'browse' && (
+            <SongBrowser
+              songs={allSongs}
+              onAddToMedley={handleAddToMedley}
+              medleySongIds={medleySongIds}
+            />
+          )}
+          {mobilePanel === 'planner' && (
+            <MedleyPlanner
+              songs={medleySongs}
+              onRemoveSong={handleRemoveSong}
+              onUpdateSong={handleUpdateSong}
+              onReorderSong={handleReorderSong}
+            />
+          )}
+          {mobilePanel === 'arrangement' && (
+            <ArrangementView
+              songs={medleySongs}
+              onUpdateSong={handleUpdateSong}
+            />
+          )}
+          {mobilePanel === 'eggs' && (
+            <EasterEggTracker
+              eggs={easterEggs}
+              onAddEgg={handleAddEgg}
+              onRemoveEgg={handleRemoveEgg}
+              onUpdateEgg={handleUpdateEgg}
+            />
+          )}
+          {mobilePanel === 'export' && (
+            <ExportPanel songs={medleySongs} eggs={easterEggs} />
+          )}
+        </div>
+
+        {/* Bottom tab bar */}
+        <div style={mStyles.tabBar}>
+          {([
+            ['browse', 'Browse', '470'],
+            ['planner', 'Medley', medleySongs.length.toString()],
+            ['arrangement', 'Arrange', ''],
+            ['eggs', 'Eggs', easterEggs.length.toString()],
+            ['export', 'Export', ''],
+          ] as [MobilePanel, string, string][]).map(([panel, label, badge]) => (
+            <button
+              key={panel}
+              onClick={() => setMobilePanel(panel)}
+              style={mobilePanel === panel ? mStyles.tabActive : mStyles.tabBtn}
+            >
+              <span style={mStyles.tabLabel}>{label}</span>
+              {badge && (
+                <span style={mStyles.tabBadge}>{badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout ──
   return (
     <div style={styles.app}>
-      {/* Header */}
       <div style={styles.headerBar}>
         <div style={styles.headerLeft}>
           <h1 style={styles.logo}>The Hundred Years' Medley</h1>
@@ -116,9 +205,7 @@ function App() {
         </div>
       </div>
 
-      {/* Main content */}
       <div style={styles.main}>
-        {/* Left panel - Song Browser */}
         <div style={styles.leftPanel}>
           <SongBrowser
             songs={allSongs}
@@ -127,7 +214,6 @@ function App() {
           />
         </div>
 
-        {/* Center panel - Planner or Arrangement */}
         <div style={styles.centerPanel}>
           {activeTab === 'planner' ? (
             <MedleyPlanner
@@ -144,7 +230,6 @@ function App() {
           )}
         </div>
 
-        {/* Right panel - Easter Eggs & Export */}
         <div style={styles.rightPanel}>
           <div style={styles.rightTabs}>
             <button
@@ -178,6 +263,93 @@ function App() {
   );
 }
 
+// ── Mobile styles ──
+const mStyles: Record<string, React.CSSProperties> = {
+  app: {
+    height: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 12px',
+    height: 40,
+    background: 'var(--bg-secondary)',
+    borderBottom: '1px solid var(--border)',
+    flexShrink: 0,
+  },
+  logo: {
+    fontSize: 13,
+    fontWeight: 800,
+    background: 'linear-gradient(90deg, #ff6b6b, #ffa94d, #ffd43b, #69db7c, #3bc9db, #748ffc, #da77f2)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    whiteSpace: 'nowrap',
+  },
+  headerStats: {
+    display: 'flex',
+    gap: 6,
+  },
+  headerBadge: {
+    fontSize: 10,
+    padding: '2px 6px',
+    borderRadius: 8,
+    background: 'var(--bg-tertiary)',
+    color: 'var(--text-secondary)',
+    fontWeight: 600,
+  },
+  content: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  tabBar: {
+    display: 'flex',
+    background: 'var(--bg-secondary)',
+    borderTop: '1px solid var(--border)',
+    flexShrink: 0,
+    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+  },
+  tabBtn: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 1,
+    padding: '8px 4px 6px',
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+  },
+  tabActive: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 1,
+    padding: '8px 4px 6px',
+    background: 'transparent',
+    border: 'none',
+    borderTop: '2px solid var(--accent)',
+    color: 'var(--accent)',
+    cursor: 'pointer',
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: 700,
+  },
+  tabBadge: {
+    fontSize: 9,
+    color: 'var(--text-muted)',
+  },
+};
+
+// ── Desktop styles ──
 const styles: Record<string, React.CSSProperties> = {
   app: {
     height: '100vh',
