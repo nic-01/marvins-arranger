@@ -5,6 +5,7 @@ import { getCamelotCode } from '../camelot';
 interface SongBrowserProps {
   songs: Song[];
   onAddToMedley: (song: Song) => void;
+  onRemoveFromMedley?: (songId: string) => void;
   medleySongIds: Set<string>;
 }
 
@@ -32,7 +33,7 @@ function getDecadeColor(decade: string): string {
 type SortField = 'year' | 'title' | 'artist' | 'bpm' | 'key' | 'energy';
 type SortDir = 'asc' | 'desc';
 
-export default function SongBrowser({ songs, onAddToMedley, medleySongIds }: SongBrowserProps) {
+export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, medleySongIds }: SongBrowserProps) {
   const [filters, setFilters] = useState<Filters>({
     decade: 'All',
     bpmMin: 0,
@@ -181,13 +182,13 @@ export default function SongBrowser({ songs, onAddToMedley, medleySongIds }: Son
         <table style={styles.table}>
           <thead>
             <tr>
+              <th style={styles.th}></th>
               <th style={styles.th} onClick={() => handleSort('year')}>Year{sortIcon('year')}</th>
               <th style={{ ...styles.th, textAlign: 'left' as const }} onClick={() => handleSort('title')}>Title{sortIcon('title')}</th>
               <th style={{ ...styles.th, textAlign: 'left' as const }} onClick={() => handleSort('artist')}>Artist{sortIcon('artist')}</th>
               <th style={styles.th} onClick={() => handleSort('bpm')}>BPM{sortIcon('bpm')}</th>
               <th style={styles.th} onClick={() => handleSort('key')}>Key{sortIcon('key')}</th>
               <th style={styles.th} onClick={() => handleSort('energy')}>Energy{sortIcon('energy')}</th>
-              <th style={styles.th}>+</th>
             </tr>
           </thead>
           <tbody>
@@ -196,11 +197,20 @@ export default function SongBrowser({ songs, onAddToMedley, medleySongIds }: Son
               return (
                 <tr
                   key={song.id}
-                  style={{
-                    ...styles.tr,
-                    opacity: inMedley ? 0.4 : 1,
-                  }}
+                  style={styles.tr}
                 >
+                  <td style={styles.td}>
+                    <button
+                      onClick={() => inMedley ? onRemoveFromMedley?.(song.id) : onAddToMedley(song)}
+                      style={{
+                        ...styles.addBtn,
+                        ...(inMedley ? styles.removeBtn : {}),
+                      }}
+                      title={inMedley ? 'Remove from medley' : 'Add to medley'}
+                    >
+                      {inMedley ? '×' : '+'}
+                    </button>
+                  </td>
                   <td style={styles.td}>
                     <span style={{ ...styles.yearBadge, borderColor: getDecadeColor(song.decade) }}>
                       {song.year}
@@ -221,19 +231,6 @@ export default function SongBrowser({ songs, onAddToMedley, medleySongIds }: Son
                     }}>
                       {song.energy}
                     </span>
-                  </td>
-                  <td style={styles.td}>
-                    <button
-                      onClick={() => !inMedley && onAddToMedley(song)}
-                      disabled={inMedley}
-                      style={{
-                        ...styles.addBtn,
-                        opacity: inMedley ? 0.3 : 1,
-                      }}
-                      title={inMedley ? 'Already in medley' : 'Add to medley'}
-                    >
-                      {inMedley ? '✓' : '+'}
-                    </button>
                   </td>
                 </tr>
               );
@@ -345,5 +342,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '50%',
     minWidth: 24,
     minHeight: 24,
+  },
+  removeBtn: {
+    background: 'var(--red)',
+    color: '#fff',
+    borderColor: 'var(--red)',
   },
 };

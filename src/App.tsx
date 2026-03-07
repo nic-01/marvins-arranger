@@ -66,6 +66,10 @@ function App() {
     setMedleySongs((prev) => prev.filter((s) => s.medleyId !== medleyId));
   }, []);
 
+  const handleRemoveFromMedley = useCallback((songId: string) => {
+    setMedleySongs((prev) => prev.filter((s) => s.id !== songId));
+  }, []);
+
   const handleUpdateSong = useCallback((medleyId: string, updates: Partial<MedleySong>) => {
     setMedleySongs((prev) =>
       prev.map((s) => (s.medleyId === medleyId ? { ...s, ...updates } : s))
@@ -123,6 +127,7 @@ function App() {
             <SongBrowser
               songs={allSongs}
               onAddToMedley={handleAddToMedley}
+              onRemoveFromMedley={handleRemoveFromMedley}
               medleySongIds={medleySongIds}
             />
           )}
