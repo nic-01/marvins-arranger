@@ -26,7 +26,7 @@ interface Message {
 async function callClaude(
   messages: Message[],
   systemPrompt: string,
-  maxTokens: number = 4096
+  maxTokens: number = 16000
 ): Promise<string> {
   if (!apiKey) throw new Error('No API key set. Set VITE_ANTHROPIC_API_KEY in .env.');
 
@@ -35,12 +35,16 @@ async function callClaude(
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      'anthropic-version': '2025-04-14',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: 'claude-opus-4-6',
       max_tokens: maxTokens,
+      thinking: {
+        type: 'enabled',
+        budget_tokens: 10000,
+      },
       system: systemPrompt,
       messages,
     }),
@@ -52,7 +56,9 @@ async function callClaude(
   }
 
   const data = await resp.json();
-  return data.content[0]?.text || '';
+  // With extended thinking, response has thinking + text blocks; extract the text one
+  const textBlock = data.content.find((b: { type: string }) => b.type === 'text');
+  return textBlock?.text || '';
 }
 
 // ── Song formatting helpers ─────────────────────────────────────────────────
