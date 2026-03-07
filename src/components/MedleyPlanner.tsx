@@ -3,7 +3,7 @@ import type { Song, MedleySong, TransitionType } from '../types';
 import { getBpmCompatibility, areKeysCompatible, getCamelotCode, getCamelotColor } from '../camelot';
 import { autoArrange, type ArrangementResult } from '../arranger';
 import { generateMedley, type GenerationProgress } from '../generator';
-import { setApiKey, getApiKey } from '../llm';
+import { hasApiKey } from '../llm';
 
 interface MedleyPlannerProps {
   songs: MedleySong[];
@@ -58,8 +58,6 @@ export default function MedleyPlanner({ songs, catalog, onRemoveSong, onUpdateSo
   const [generating, setGenerating] = useState(false);
   const [genProgress, setGenProgress] = useState<GenerationProgress | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
-  const [showGenPanel, setShowGenPanel] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
   const [genNarrative, setGenNarrative] = useState<string | null>(null);
 
   const totalSeconds = songs.reduce((sum, s) => sum + s.snippet_duration, 0);
@@ -83,9 +81,6 @@ export default function MedleyPlanner({ songs, catalog, onRemoveSong, onUpdateSo
     setGenError(null);
     setGenNarrative(null);
 
-    // Save API key if provided
-    if (apiKeyInput) setApiKey(apiKeyInput);
-
     // Use currently selected songs as pinned
     const pinnedIds = new Set(songs.map(s => s.id));
 
@@ -94,7 +89,6 @@ export default function MedleyPlanner({ songs, catalog, onRemoveSong, onUpdateSo
       onReplaceSongs(result.arrangement.songs);
       setArrangeResult(result.arrangement);
       if (result.narrative) setGenNarrative(result.narrative);
-      setShowGenPanel(false);
       setTimeout(() => setArrangeResult(null), 12000);
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Generation failed');
@@ -143,38 +137,17 @@ export default function MedleyPlanner({ songs, catalog, onRemoveSong, onUpdateSo
       {catalog && onReplaceSongs && (
         <div style={styles.genSection}>
           <button
-            onClick={() => setShowGenPanel(!showGenPanel)}
+            onClick={handleGenerate}
             style={styles.generateToggle}
             disabled={generating}
           >
-            {generating ? 'Generating...' : 'Generate Medley'}
+            {generating ? 'Generating...' : `Generate Medley from ${catalog.length} songs`}
           </button>
-
-          {showGenPanel && !generating && (
-            <div style={styles.genPanel}>
-              <div style={styles.genDescription}>
-                Algorithmically selects the best songs from all {catalog.length} in the catalog,
-                optimizing for smooth transitions, energy arc, and musical narrative.
-                {songs.length > 0 && ` Your ${songs.length} current songs will be pinned.`}
-              </div>
-              <div style={styles.genRow}>
-                <label style={styles.genLabel}>Claude API key (optional):</label>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  style={styles.genInput}
-                  placeholder="sk-ant-..."
-                />
-              </div>
-              <div style={styles.genHint}>
-                {apiKeyInput
-                  ? 'With API key: Claude will evaluate paths, suggest mashups, and write arrangement notes.'
-                  : 'Without API key: pure algorithmic generation (still good, just no LLM polish).'}
-              </div>
-              <button onClick={handleGenerate} style={styles.genGoBtn}>
-                Generate from {catalog.length} songs
-              </button>
+          {!generating && (
+            <div style={styles.genHint}>
+              {hasApiKey()
+                ? 'Claude will evaluate paths, suggest mashups, and write arrangement notes.'
+                : 'Set VITE_ANTHROPIC_API_KEY in .env to enable LLM-powered generation.'}
             </div>
           )}
 
@@ -581,53 +554,11 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     letterSpacing: 0.5,
   },
-  genPanel: {
-    marginTop: 8,
-    padding: 12,
-    background: 'var(--bg-tertiary)',
-    borderRadius: 6,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-  },
-  genDescription: {
-    fontSize: 11,
-    color: 'var(--text-secondary)',
-    lineHeight: 1.4,
-  },
-  genRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-  },
-  genLabel: {
-    fontSize: 11,
-    fontWeight: 600,
-    whiteSpace: 'nowrap',
-  },
-  genInput: {
-    flex: 1,
-    fontSize: 11,
-    padding: '4px 8px',
-    borderRadius: 4,
-    border: '1px solid var(--border)',
-    background: 'var(--bg-primary)',
-    color: 'var(--text-primary)',
-  },
   genHint: {
+    marginTop: 4,
     fontSize: 10,
     color: 'var(--text-muted)',
     fontStyle: 'italic',
-  },
-  genGoBtn: {
-    fontSize: 12,
-    fontWeight: 700,
-    padding: '8px 16px',
-    borderRadius: 6,
-    border: 'none',
-    background: 'linear-gradient(135deg, #69db7c, #3bc9db)',
-    color: '#000',
-    cursor: 'pointer',
   },
   genProgressPanel: {
     marginTop: 8,

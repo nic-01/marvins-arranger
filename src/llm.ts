@@ -12,15 +12,7 @@ import type { Song } from './types';
 
 // ── API Configuration ───────────────────────────────────────────────────────
 
-let apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
-
-export function setApiKey(key: string): void {
-  apiKey = key;
-}
-
-export function getApiKey(): string {
-  return apiKey;
-}
+const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
 
 export function hasApiKey(): boolean {
   return apiKey.length > 0;
@@ -36,7 +28,7 @@ async function callClaude(
   systemPrompt: string,
   maxTokens: number = 4096
 ): Promise<string> {
-  if (!apiKey) throw new Error('No API key set. Call setApiKey() first.');
+  if (!apiKey) throw new Error('No API key set. Set VITE_ANTHROPIC_API_KEY in .env.');
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
