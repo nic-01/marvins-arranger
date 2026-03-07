@@ -27,16 +27,35 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored) return JSON.parse(stored);
+  } catch { /* ignore */ }
+  return fallback;
+}
+
 function App() {
   const isMobile = useIsMobile();
-  const [medleySongs, setMedleySongs] = useState<MedleySong[]>([]);
+  const [medleySongs, setMedleySongs] = useState<MedleySong[]>(() =>
+    loadFromStorage('medley-songs', [])
+  );
   const [activeTab, setActiveTab] = useState<Tab>('planner');
   const [rightTab, setRightTab] = useState<RightTab>('eggs');
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('browse');
 
   const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(() =>
-    DEFAULT_EGGS.map((egg) => ({ ...egg, id: generateId() }))
+    loadFromStorage('medley-eggs', DEFAULT_EGGS.map((egg) => ({ ...egg, id: generateId() })))
   );
+
+  // Persist to localStorage
+  useEffect(() => {
+    localStorage.setItem('medley-songs', JSON.stringify(medleySongs));
+  }, [medleySongs]);
+
+  useEffect(() => {
+    localStorage.setItem('medley-eggs', JSON.stringify(easterEggs));
+  }, [easterEggs]);
 
   const medleySongIds = useMemo(
     () => new Set(medleySongs.map((s) => s.id)),
