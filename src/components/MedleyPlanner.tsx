@@ -84,21 +84,22 @@ export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReo
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <h2 style={styles.title}>Medley Planner</h2>
-          <div style={styles.stats}>
-            <span style={styles.statBadge}>{songs.length} songs</span>
-            <span style={{ ...styles.statBadge, background: totalSeconds > 53 * 60 ? 'var(--red)' : totalSeconds > 45 * 60 ? 'var(--amber)' : 'var(--green)', color: '#000' }}>
-              {totalMinutes}:{remainingSeconds.toString().padStart(2, '0')}
-            </span>
-          </div>
+        <h2 style={styles.title}>Medley Planner</h2>
+        <div style={styles.stats}>
+          <span style={styles.statBadge}>{songs.length} songs</span>
+          <span style={{ ...styles.statBadge, background: totalSeconds > 53 * 60 ? 'var(--red)' : totalSeconds > 45 * 60 ? 'var(--amber)' : 'var(--green)', color: '#000' }}>
+            {totalMinutes}:{remainingSeconds.toString().padStart(2, '0')}
+          </span>
         </div>
-        {songs.length >= 2 && onReplaceSongs && (
+      </div>
+
+      {songs.length >= 2 && onReplaceSongs && (
+        <div style={styles.arrangeBar}>
           <button onClick={handleAutoArrange} style={styles.arrangeBtn}>
             Auto-Arrange
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {arrangeResult && (
         <div style={styles.arrangeBanner}>
@@ -287,14 +288,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    padding: '12px 16px 8px',
-  },
-  headerTop: {
-    display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: '12px 16px 8px',
+  },
+  arrangeBar: {
+    padding: '0 16px 8px',
+    flexShrink: 0,
   },
   title: {
     fontSize: 16,
