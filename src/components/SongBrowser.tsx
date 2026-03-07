@@ -120,18 +120,21 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
       <div style={styles.header}>
         <h2 style={styles.title}>Song Browser</h2>
         <span style={styles.count}>{filtered.length} / {songs.length} songs</span>
-        {onBulkAdd && (
-          <button
-            onClick={() => {
-              const notYetAdded = filtered.filter((s) => !medleySongIds.has(s.id));
-              if (notYetAdded.length > 0) onBulkAdd(notYetAdded);
-            }}
-            style={styles.bulkAddBtn}
-          >
-            + Add {filtered.length === songs.length ? 'All' : `${filtered.filter((s) => !medleySongIds.has(s.id)).length} Filtered`}
-          </button>
-        )}
       </div>
+
+      {onBulkAdd && (() => {
+        const notYetAdded = filtered.filter((s) => !medleySongIds.has(s.id));
+        return notYetAdded.length > 0 ? (
+          <div style={styles.bulkAddBar}>
+            <button
+              onClick={() => onBulkAdd(notYetAdded)}
+              style={styles.bulkAddBtn}
+            >
+              + Add {notYetAdded.length} Song{notYetAdded.length !== 1 ? 's' : ''} to Medley
+            </button>
+          </div>
+        ) : null;
+      })()}
 
       <div style={styles.filters}>
         <input
@@ -266,19 +269,20 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 16px 8px',
-    flexWrap: 'wrap',
-    gap: 6,
+  },
+  bulkAddBar: {
+    padding: '0 16px 8px',
   },
   bulkAddBtn: {
-    fontSize: 11,
+    width: '100%',
+    fontSize: 13,
     fontWeight: 700,
-    padding: '4px 10px',
-    borderRadius: 4,
+    padding: '8px 12px',
+    borderRadius: 6,
     border: 'none',
     background: 'var(--green)',
     color: '#000',
     cursor: 'pointer',
-    whiteSpace: 'nowrap',
   },
   title: {
     fontSize: 16,
