@@ -212,6 +212,23 @@ export default function ArrangementView({ songs }: ArrangementViewProps) {
                           {song.guitar_driven && <span title="Guitar feature">GTR</span>}
                         </div>
 
+                        {/* Arrangement notes */}
+                        {song.arrangement_notes && (
+                          <div style={{
+                            ...styles.blockNotes,
+                            ...(song.arrangement_notes.startsWith('MASHUP') ? styles.blockMashup : {}),
+                          }}>
+                            {song.arrangement_notes}
+                          </div>
+                        )}
+
+                        {/* Tempo treatment */}
+                        {song.tempo_treatment && (
+                          <div style={styles.blockTempo}>
+                            {song.tempo_treatment}
+                          </div>
+                        )}
+
                         {/* Warnings */}
                         {bpmCompat !== 'ok' && (
                           <div style={{
@@ -416,6 +433,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#000',
     padding: '0 4px',
     borderRadius: '0 4px 0 4px',
+  },
+  blockNotes: {
+    fontSize: 8,
+    color: 'var(--text-secondary)',
+    marginTop: 3,
+    lineHeight: 1.3,
+    maxWidth: 120,
+    whiteSpace: 'normal' as const,
+  },
+  blockMashup: {
+    color: '#da77f2',
+    fontWeight: 600,
+    background: 'rgba(218, 119, 242, 0.1)',
+    padding: '1px 3px',
+    borderRadius: 2,
+  },
+  blockTempo: {
+    fontSize: 7,
+    color: 'var(--text-muted)',
+    marginTop: 2,
+    fontStyle: 'italic' as const,
+    maxWidth: 120,
+    whiteSpace: 'normal' as const,
   },
   keyPath: {
     display: 'flex',

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import type { MedleySong, TransitionType } from '../types';
 import { getBpmCompatibility, areKeysCompatible, getCamelotCode, getCamelotColor } from '../camelot';
+import { autoArrange, type ArrangementResult } from '../arranger';
 
 interface MedleyPlannerProps {
   songs: MedleySong[];
   onRemoveSong: (medleyId: string) => void;
   onUpdateSong: (medleyId: string, updates: Partial<MedleySong>) => void;
   onReorderSong: (medleyId: string, direction: 'up' | 'down') => void;
+  onReplaceSongs?: (songs: MedleySong[]) => void;
 }
 
 const TRANSITIONS: TransitionType[] = ['hard_cut', 'tempo_ramp', 'key_ramp', 'drum_fill', 'bass_bridge', 'vamp_fade'];
@@ -47,12 +49,24 @@ function getDecadeColor(decade: string): string {
   return map[decade] || 'var(--text-muted)';
 }
 
-export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReorderSong }: MedleyPlannerProps) {
+export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReorderSong, onReplaceSongs }: MedleyPlannerProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [arrangeResult, setArrangeResult] = useState<ArrangementResult | null>(null);
 
   const totalSeconds = songs.reduce((sum, s) => sum + s.snippet_duration, 0);
   const totalMinutes = Math.floor(totalSeconds / 60);
   const remainingSeconds = totalSeconds % 60;
+
+  const handleAutoArrange = () => {
+    if (songs.length === 0) return;
+    const result = autoArrange(songs);
+    setArrangeResult(result);
+    if (onReplaceSongs) {
+      onReplaceSongs(result.songs);
+    }
+    // Clear the result banner after 8 seconds
+    setTimeout(() => setArrangeResult(null), 8000);
+  };
 
   // Group songs by decade
   const decades = songs.reduce<Record<string, MedleySong[]>>((acc, song) => {
@@ -76,8 +90,23 @@ export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReo
           <span style={{ ...styles.statBadge, background: totalSeconds > 53 * 60 ? 'var(--red)' : totalSeconds > 45 * 60 ? 'var(--amber)' : 'var(--green)', color: '#000' }}>
             {totalMinutes}:{remainingSeconds.toString().padStart(2, '0')}
           </span>
+          {songs.length >= 2 && onReplaceSongs && (
+            <button onClick={handleAutoArrange} style={styles.arrangeBtn}>
+              Auto-Arrange
+            </button>
+          )}
         </div>
       </div>
+
+      {arrangeResult && (
+        <div style={styles.arrangeBanner}>
+          Arranged {arrangeResult.stats.totalSongs} songs ({arrangeResult.stats.totalDuration})
+          {' · '}{arrangeResult.stats.mashupCount} mashups
+          {' · '}{arrangeResult.stats.crowdMoments} crowd moments
+          {' · '}avg key dist {arrangeResult.stats.avgCamelotDistance}
+          {' · '}{Object.entries(arrangeResult.stats.transitionBreakdown).map(([t, n]) => `${n} ${t.replace('_', ' ')}`).join(', ')}
+        </div>
+      )}
 
       <div style={styles.timeline}>
         {decadeOrder.map((decadeLabel) => {
@@ -410,5 +439,24 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--text-muted)',
     padding: 40,
     fontSize: 14,
+  },
+  arrangeBtn: {
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '3px 12px',
+    borderRadius: 4,
+    border: 'none',
+    background: 'linear-gradient(135deg, #748ffc, #da77f2)',
+    color: '#fff',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  arrangeBanner: {
+    fontSize: 10,
+    padding: '6px 16px',
+    background: 'rgba(116, 143, 252, 0.15)',
+    color: '#748ffc',
+    borderBottom: '1px solid rgba(116, 143, 252, 0.3)',
+    fontWeight: 600,
   },
 };

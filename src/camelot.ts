@@ -115,3 +115,56 @@ export function getCamelotColor(key: string): string {
   if (!pos) return '#888';
   return CAMELOT_COLORS[pos.number];
 }
+
+// Get the number of steps between two keys on the Camelot wheel (0-6)
+// Considers same-letter adjacency and cross-letter (relative major/minor)
+export function getCamelotDistance(key1: string, key2: string): number {
+  const pos1 = getCamelotPosition(key1);
+  const pos2 = getCamelotPosition(key2);
+  if (!pos1 || !pos2) return 3; // unknown = moderate distance
+
+  // Same position exactly
+  if (pos1.number === pos2.number && pos1.letter === pos2.letter) return 0;
+
+  // Relative major/minor (same number, different letter) = 1 step
+  if (pos1.number === pos2.number) return 1;
+
+  // Circular distance on the wheel (1-6)
+  const circDist = Math.min(
+    Math.abs(pos1.number - pos2.number),
+    12 - Math.abs(pos1.number - pos2.number)
+  );
+
+  // If same letter, just the circular distance
+  if (pos1.letter === pos2.letter) return circDist;
+
+  // Different letter + different number: cross to relative then walk
+  // e.g., 8A to 10B = 8A->8B (1 step) then 8B->10B (2 steps) = 3 steps
+  return 1 + circDist;
+}
+
+// Check if two BPMs are in a half-time or double-time relationship (within 5%)
+export function isHalfDoubleTime(bpm1: number, bpm2: number): boolean {
+  const ratio = bpm1 / bpm2;
+  return (ratio > 1.9 && ratio < 2.1) || (ratio > 0.475 && ratio < 0.525);
+}
+
+// Get the effective BPM closest to a target (considering half/double-time)
+export function getEffectiveBpm(bpm: number, targetBpm: number): number {
+  const candidates = [bpm, bpm / 2, bpm * 2];
+  let best = bpm;
+  let bestDiff = Math.abs(bpm - targetBpm);
+  for (const c of candidates) {
+    const diff = Math.abs(c - targetBpm);
+    if (diff < bestDiff) {
+      best = c;
+      bestDiff = diff;
+    }
+  }
+  return best;
+}
+
+// Get the minimum BPM difference considering half/double-time
+export function getEffectiveBpmDiff(bpm1: number, bpm2: number): number {
+  return Math.abs(bpm1 - getEffectiveBpm(bpm2, bpm1));
+}

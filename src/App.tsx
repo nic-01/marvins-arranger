@@ -76,6 +76,10 @@ function App() {
     );
   }, []);
 
+  const handleReplaceSongs = useCallback((newSongs: MedleySong[]) => {
+    setMedleySongs(newSongs);
+  }, []);
+
   const handleReorderSong = useCallback((medleyId: string, direction: 'up' | 'down') => {
     setMedleySongs((prev) => {
       const idx = prev.findIndex((s) => s.medleyId === medleyId);
@@ -137,6 +141,7 @@ function App() {
               onRemoveSong={handleRemoveSong}
               onUpdateSong={handleUpdateSong}
               onReorderSong={handleReorderSong}
+              onReplaceSongs={handleReplaceSongs}
             />
           )}
           {mobilePanel === 'arrangement' && (
@@ -226,6 +231,7 @@ function App() {
               onRemoveSong={handleRemoveSong}
               onUpdateSong={handleUpdateSong}
               onReorderSong={handleReorderSong}
+              onReplaceSongs={handleReplaceSongs}
             />
           ) : (
             <ArrangementView
