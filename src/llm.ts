@@ -12,7 +12,7 @@ import type { Song } from './types';
 
 // ── API Configuration ───────────────────────────────────────────────────────
 
-let apiKey = '';
+let apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
 
 export function setApiKey(key: string): void {
   apiKey = key;
