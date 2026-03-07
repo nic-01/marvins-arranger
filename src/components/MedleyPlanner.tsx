@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import type { MedleySong, TransitionType } from '../types';
+import type { Song, MedleySong, TransitionType } from '../types';
 import { getBpmCompatibility, areKeysCompatible, getCamelotCode, getCamelotColor } from '../camelot';
 import { autoArrange, type ArrangementResult } from '../arranger';
+import { generateMedley, type GenerationProgress } from '../generator';
+import { setApiKey, getApiKey } from '../llm';
 
 interface MedleyPlannerProps {
   songs: MedleySong[];
+  catalog?: Song[];
   onRemoveSong: (medleyId: string) => void;
   onUpdateSong: (medleyId: string, updates: Partial<MedleySong>) => void;
   onReorderSong: (medleyId: string, direction: 'up' | 'down') => void;
@@ -49,9 +52,15 @@ function getDecadeColor(decade: string): string {
   return map[decade] || 'var(--text-muted)';
 }
 
-export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReorderSong, onReplaceSongs }: MedleyPlannerProps) {
+export default function MedleyPlanner({ songs, catalog, onRemoveSong, onUpdateSong, onReorderSong, onReplaceSongs }: MedleyPlannerProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [arrangeResult, setArrangeResult] = useState<ArrangementResult | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState<GenerationProgress | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [showGenPanel, setShowGenPanel] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
+  const [genNarrative, setGenNarrative] = useState<string | null>(null);
 
   const totalSeconds = songs.reduce((sum, s) => sum + s.snippet_duration, 0);
   const totalMinutes = Math.floor(totalSeconds / 60);
@@ -66,6 +75,33 @@ export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReo
     }
     // Clear the result banner after 8 seconds
     setTimeout(() => setArrangeResult(null), 8000);
+  };
+
+  const handleGenerate = async () => {
+    if (!catalog || !onReplaceSongs) return;
+    setGenerating(true);
+    setGenError(null);
+    setGenNarrative(null);
+
+    // Save API key if provided
+    if (apiKeyInput) setApiKey(apiKeyInput);
+
+    // Use currently selected songs as pinned
+    const pinnedIds = new Set(songs.map(s => s.id));
+
+    try {
+      const result = await generateMedley(catalog, pinnedIds, setGenProgress);
+      onReplaceSongs(result.arrangement.songs);
+      setArrangeResult(result.arrangement);
+      if (result.narrative) setGenNarrative(result.narrative);
+      setShowGenPanel(false);
+      setTimeout(() => setArrangeResult(null), 12000);
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : 'Generation failed');
+    } finally {
+      setGenerating(false);
+      setGenProgress(null);
+    }
   };
 
   // Group songs by decade
@@ -102,6 +138,66 @@ export default function MedleyPlanner({ songs, onRemoveSong, onUpdateSong, onReo
           </span>
         </div>
       </div>
+
+      {/* Generate Medley Panel */}
+      {catalog && onReplaceSongs && (
+        <div style={styles.genSection}>
+          <button
+            onClick={() => setShowGenPanel(!showGenPanel)}
+            style={styles.generateToggle}
+            disabled={generating}
+          >
+            {generating ? 'Generating...' : 'Generate Medley'}
+          </button>
+
+          {showGenPanel && !generating && (
+            <div style={styles.genPanel}>
+              <div style={styles.genDescription}>
+                Algorithmically selects the best songs from all {catalog.length} in the catalog,
+                optimizing for smooth transitions, energy arc, and musical narrative.
+                {songs.length > 0 && ` Your ${songs.length} current songs will be pinned.`}
+              </div>
+              <div style={styles.genRow}>
+                <label style={styles.genLabel}>Claude API key (optional):</label>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  style={styles.genInput}
+                  placeholder="sk-ant-..."
+                />
+              </div>
+              <div style={styles.genHint}>
+                {apiKeyInput
+                  ? 'With API key: Claude will evaluate paths, suggest mashups, and write arrangement notes.'
+                  : 'Without API key: pure algorithmic generation (still good, just no LLM polish).'}
+              </div>
+              <button onClick={handleGenerate} style={styles.genGoBtn}>
+                Generate from {catalog.length} songs
+              </button>
+            </div>
+          )}
+
+          {generating && genProgress && (
+            <div style={styles.genProgressPanel}>
+              <div style={styles.genProgressBar}>
+                <div style={{ ...styles.genProgressFill, width: `${genProgress.percent}%` }} />
+              </div>
+              <div style={styles.genProgressText}>{genProgress.message}</div>
+            </div>
+          )}
+
+          {genError && (
+            <div style={styles.genError}>{genError}</div>
+          )}
+        </div>
+      )}
+
+      {genNarrative && (
+        <div style={styles.narrativeBanner}>
+          {genNarrative}
+        </div>
+      )}
 
       {arrangeResult && (
         <div style={styles.arrangeBanner}>
@@ -469,6 +565,109 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--red)',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
+  },
+  genSection: {
+    padding: '0 16px 8px',
+  },
+  generateToggle: {
+    fontSize: 12,
+    fontWeight: 700,
+    padding: '8px 16px',
+    borderRadius: 6,
+    border: 'none',
+    background: 'linear-gradient(135deg, #ff6b6b, #ffa94d, #ffd43b, #69db7c, #3bc9db, #748ffc, #da77f2)',
+    color: '#000',
+    cursor: 'pointer',
+    width: '100%',
+    letterSpacing: 0.5,
+  },
+  genPanel: {
+    marginTop: 8,
+    padding: 12,
+    background: 'var(--bg-tertiary)',
+    borderRadius: 6,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+  },
+  genDescription: {
+    fontSize: 11,
+    color: 'var(--text-secondary)',
+    lineHeight: 1.4,
+  },
+  genRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  genLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
+  genInput: {
+    flex: 1,
+    fontSize: 11,
+    padding: '4px 8px',
+    borderRadius: 4,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-primary)',
+    color: 'var(--text-primary)',
+  },
+  genHint: {
+    fontSize: 10,
+    color: 'var(--text-muted)',
+    fontStyle: 'italic',
+  },
+  genGoBtn: {
+    fontSize: 12,
+    fontWeight: 700,
+    padding: '8px 16px',
+    borderRadius: 6,
+    border: 'none',
+    background: 'linear-gradient(135deg, #69db7c, #3bc9db)',
+    color: '#000',
+    cursor: 'pointer',
+  },
+  genProgressPanel: {
+    marginTop: 8,
+    padding: 12,
+    background: 'var(--bg-tertiary)',
+    borderRadius: 6,
+  },
+  genProgressBar: {
+    height: 4,
+    background: 'var(--bg-primary)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  genProgressFill: {
+    height: '100%',
+    background: 'linear-gradient(90deg, #69db7c, #3bc9db, #748ffc)',
+    borderRadius: 2,
+    transition: 'width 0.3s ease',
+  },
+  genProgressText: {
+    fontSize: 11,
+    color: 'var(--text-secondary)',
+  },
+  genError: {
+    marginTop: 8,
+    fontSize: 11,
+    color: 'var(--red)',
+    padding: '6px 12px',
+    background: 'rgba(239, 83, 80, 0.1)',
+    borderRadius: 4,
+  },
+  narrativeBanner: {
+    fontSize: 11,
+    padding: '8px 16px',
+    background: 'rgba(105, 219, 124, 0.1)',
+    color: '#69db7c',
+    borderBottom: '1px solid rgba(105, 219, 124, 0.2)',
+    lineHeight: 1.4,
+    fontStyle: 'italic',
   },
   arrangeBanner: {
     fontSize: 10,

@@ -171,6 +171,7 @@ function App() {
           {mobilePanel === 'planner' && (
             <MedleyPlanner
               songs={medleySongs}
+              catalog={allSongs}
               onRemoveSong={handleRemoveSong}
               onUpdateSong={handleUpdateSong}
               onReorderSong={handleReorderSong}
@@ -262,6 +263,7 @@ function App() {
           {activeTab === 'planner' ? (
             <MedleyPlanner
               songs={medleySongs}
+              catalog={allSongs}
               onRemoveSong={handleRemoveSong}
               onUpdateSong={handleUpdateSong}
               onReorderSong={handleReorderSong}
