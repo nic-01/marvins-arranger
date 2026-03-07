@@ -62,20 +62,33 @@ function App() {
     [medleySongs]
   );
 
+  const songToMedley = (song: Song): MedleySong => ({
+    ...song,
+    medleyId: generateId(),
+    snippet_duration: song.crowd_singalong ? 55 : 45,
+    section: 'chorus',
+    bar_count: 16,
+    transition_in: 'hard_cut',
+    featured_instruments: [],
+    crowd_moment: song.crowd_singalong,
+    easter_egg: false,
+  });
+
   const handleAddToMedley = useCallback((song: Song) => {
-    const medleySong: MedleySong = {
-      ...song,
-      medleyId: generateId(),
-      snippet_duration: song.crowd_singalong ? 55 : 45,
-      section: 'chorus',
-      bar_count: 16,
-      transition_in: 'hard_cut',
-      featured_instruments: [],
-      crowd_moment: song.crowd_singalong,
-      easter_egg: false,
-    };
     setMedleySongs((prev) => {
-      const updated = [...prev, medleySong];
+      const updated = [...prev, songToMedley(song)];
+      updated.sort((a, b) => a.year - b.year || a.title.localeCompare(b.title));
+      return updated;
+    });
+  }, []);
+
+  const handleBulkAdd = useCallback((songs: Song[]) => {
+    setMedleySongs((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id));
+      const newSongs = songs
+        .filter((s) => !existingIds.has(s.id))
+        .map(songToMedley);
+      const updated = [...prev, ...newSongs];
       updated.sort((a, b) => a.year - b.year || a.title.localeCompare(b.title));
       return updated;
     });
@@ -151,6 +164,7 @@ function App() {
               songs={allSongs}
               onAddToMedley={handleAddToMedley}
               onRemoveFromMedley={handleRemoveFromMedley}
+              onBulkAdd={handleBulkAdd}
               medleySongIds={medleySongIds}
             />
           )}
@@ -239,6 +253,7 @@ function App() {
           <SongBrowser
             songs={allSongs}
             onAddToMedley={handleAddToMedley}
+            onBulkAdd={handleBulkAdd}
             medleySongIds={medleySongIds}
           />
         </div>

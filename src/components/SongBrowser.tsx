@@ -6,6 +6,7 @@ interface SongBrowserProps {
   songs: Song[];
   onAddToMedley: (song: Song) => void;
   onRemoveFromMedley?: (songId: string) => void;
+  onBulkAdd?: (songs: Song[]) => void;
   medleySongIds: Set<string>;
 }
 
@@ -33,7 +34,7 @@ function getDecadeColor(decade: string): string {
 type SortField = 'year' | 'title' | 'artist' | 'bpm' | 'key' | 'energy';
 type SortDir = 'asc' | 'desc';
 
-export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, medleySongIds }: SongBrowserProps) {
+export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, medleySongIds }: SongBrowserProps) {
   const [filters, setFilters] = useState<Filters>({
     decade: 'All',
     bpmMin: 0,
@@ -119,6 +120,17 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
       <div style={styles.header}>
         <h2 style={styles.title}>Song Browser</h2>
         <span style={styles.count}>{filtered.length} / {songs.length} songs</span>
+        {onBulkAdd && (
+          <button
+            onClick={() => {
+              const notYetAdded = filtered.filter((s) => !medleySongIds.has(s.id));
+              if (notYetAdded.length > 0) onBulkAdd(notYetAdded);
+            }}
+            style={styles.bulkAddBtn}
+          >
+            + Add {filtered.length === songs.length ? 'All' : `${filtered.filter((s) => !medleySongIds.has(s.id)).length} Filtered`}
+          </button>
+        )}
       </div>
 
       <div style={styles.filters}>
@@ -254,6 +266,19 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 16px 8px',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  bulkAddBtn: {
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '4px 10px',
+    borderRadius: 4,
+    border: 'none',
+    background: 'var(--green)',
+    color: '#000',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   title: {
     fontSize: 16,
