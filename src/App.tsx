@@ -132,6 +132,11 @@ function App() {
     setMedleySongs((prev) => prev.filter((s) => s.id !== songId));
   }, []);
 
+  const handleBulkRemove = useCallback((songIds: string[]) => {
+    const idsToRemove = new Set(songIds);
+    setMedleySongs((prev) => prev.filter((s) => !idsToRemove.has(s.id)));
+  }, []);
+
   const handleUpdateSong = useCallback((medleyId: string, updates: Partial<MedleySong>) => {
     setMedleySongs((prev) =>
       prev.map((s) => (s.medleyId === medleyId ? { ...s, ...updates } : s))
@@ -240,6 +245,7 @@ function App() {
             onAddToMedley={handleAddToMedley}
             onRemoveFromMedley={handleRemoveFromMedley}
             onBulkAdd={handleBulkAdd}
+            onBulkRemove={handleBulkRemove}
             medleySongIds={medleySongIds}
             starredIds={starredIds}
             deletedIds={deletedIds}

@@ -7,6 +7,7 @@ interface SongBrowserProps {
   onAddToMedley: (song: Song) => void;
   onRemoveFromMedley?: (songId: string) => void;
   onBulkAdd?: (songs: Song[]) => void;
+  onBulkRemove?: (songIds: string[]) => void;
   medleySongIds: Set<string>;
   starredIds?: Set<string>;
   deletedIds?: Set<string>;
@@ -38,7 +39,7 @@ function getDecadeColor(decade: string): string {
 type SortField = 'year' | 'title' | 'artist' | 'bpm' | 'key' | 'energy';
 type SortDir = 'asc' | 'desc';
 
-export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, medleySongIds, starredIds, deletedIds, onPreferenceChange, showPreferences }: SongBrowserProps) {
+export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, onBulkRemove, medleySongIds, starredIds, deletedIds, onPreferenceChange, showPreferences }: SongBrowserProps) {
   const [filters, setFilters] = useState<Filters>({
     decade: 'All',
     bpmMin: 0,
@@ -128,18 +129,30 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
         <span style={styles.count}>{filtered.length} / {songs.length} songs</span>
       </div>
 
-      {onBulkAdd && (() => {
-        const notYetAdded = filtered.filter((s) => !medleySongIds.has(s.id));
-        return notYetAdded.length > 0 ? (
+      {(() => {
+        const notYetAdded = onBulkAdd ? filtered.filter((s) => !medleySongIds.has(s.id)) : [];
+        const alreadyAdded = onBulkRemove ? filtered.filter((s) => medleySongIds.has(s.id)) : [];
+        if (notYetAdded.length === 0 && alreadyAdded.length === 0) return null;
+        return (
           <div style={styles.bulkAddBar}>
-            <button
-              onClick={() => onBulkAdd(notYetAdded)}
-              style={styles.bulkAddBtn}
-            >
-              + Add {notYetAdded.length} Song{notYetAdded.length !== 1 ? 's' : ''} to Medley
-            </button>
+            {notYetAdded.length > 0 && onBulkAdd && (
+              <button
+                onClick={() => onBulkAdd(notYetAdded)}
+                style={styles.bulkAddBtn}
+              >
+                + Add {notYetAdded.length} Song{notYetAdded.length !== 1 ? 's' : ''} to Medley
+              </button>
+            )}
+            {alreadyAdded.length > 0 && onBulkRemove && (
+              <button
+                onClick={() => onBulkRemove(alreadyAdded.map(s => s.id))}
+                style={styles.bulkRemoveBtn}
+              >
+                - Remove {alreadyAdded.length} Song{alreadyAdded.length !== 1 ? 's' : ''} from Medley
+              </button>
+            )}
           </div>
-        ) : null;
+        );
       })()}
 
       <div style={styles.filters}>
@@ -318,9 +331,11 @@ const styles: Record<string, React.CSSProperties> = {
   },
   bulkAddBar: {
     padding: '0 16px 8px',
+    display: 'flex',
+    gap: 8,
   },
   bulkAddBtn: {
-    width: '100%',
+    flex: 1,
     fontSize: 13,
     fontWeight: 700,
     padding: '8px 12px',
@@ -328,6 +343,17 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     background: 'var(--green)',
     color: '#000',
+    cursor: 'pointer',
+  },
+  bulkRemoveBtn: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: 700,
+    padding: '8px 12px',
+    borderRadius: 6,
+    border: 'none',
+    background: 'var(--red, #f44336)',
+    color: '#fff',
     cursor: 'pointer',
   },
   title: {
