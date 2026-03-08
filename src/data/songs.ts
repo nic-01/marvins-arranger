@@ -1,6 +1,6 @@
 import type { Song } from '../types';
 
-type SongTuple = [
+export type SongTuple = [
   string, // title
   string, // artist
   number, // year
@@ -554,4 +554,6 @@ const RAW: SongTuple[] = [
   ['Beautiful Things', 'Benson Boone', 2024, '2020s', 109, 'Ab major', 'Pop', 'M', 'M', 1, 'Emotional guitar pop'],
 ];
 
-export const allSongs: Song[] = RAW.map(makeSong);
+export { makeSong };
+export const coreSongs: Song[] = RAW.map(makeSong);
+export { RAW as coreRaw };
