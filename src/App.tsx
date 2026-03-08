@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog, BlockRating } from './types';
 import SongBrowser from './components/SongBrowser';
 import MedleyPlanner from './components/MedleyPlanner';
@@ -189,6 +189,47 @@ function App() {
     setStage('arrange');
   }, []);
 
+  // Export/import preferences
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportPrefs = useCallback(() => {
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      starred: Array.from(starredIds),
+      deleted: Array.from(deletedIds),
+      prefLog,
+      blockPrefLog,
+      blockRatings: Array.from(blockRatings.entries()),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `marvins-prefs-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [starredIds, deletedIds, prefLog, blockPrefLog, blockRatings]);
+
+  const handleImportPrefs = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string);
+        if (data.starred) setStarredIds(new Set(data.starred));
+        if (data.deleted) setDeletedIds(new Set(data.deleted));
+        if (data.prefLog) setPrefLog(data.prefLog);
+        if (data.blockPrefLog) setBlockPrefLog(data.blockPrefLog);
+        // blockRatings is derived from blockPrefLog via useMemo, no need to import separately
+      } catch { /* ignore bad files */ }
+    };
+    reader.readAsText(file);
+    // Reset so same file can be re-imported
+    e.target.value = '';
+  }, []);
+
   // Stage definitions
   const stages: { key: Stage; label: string; badge?: string }[] = [
     { key: 'songs', label: '1. Songs', badge: `${allSongs.length - deletedIds.size}` },
@@ -234,6 +275,19 @@ function App() {
               {medleySongs.length} songs &middot; {totalMin}:{totalSec.toString().padStart(2, '0')}
             </span>
           )}
+          <button onClick={handleExportPrefs} style={styles.headerBtn} title="Export preferences (stars, deletions, ratings)">
+            Export
+          </button>
+          <button onClick={() => fileInputRef.current?.click()} style={styles.headerBtn} title="Import preferences from file">
+            Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImportPrefs}
+            style={{ display: 'none' }}
+          />
         </div>
       </div>
 
@@ -389,6 +443,15 @@ const styles: Record<string, React.CSSProperties> = {
   headerStat: {
     fontSize: 11,
     color: 'var(--text-muted)',
+  },
+  headerBtn: {
+    fontSize: 11,
+    padding: '3px 8px',
+    borderRadius: 4,
+    border: '1px solid var(--border)',
+    background: 'transparent',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
   },
   stageContent: {
     flex: 1,
