@@ -11,6 +11,7 @@ import {
   getEffectiveBpmDiff,
   isHalfDoubleTime,
 } from './camelot';
+import { scoreChordCompatibility } from './chord-compatibility';
 
 // ── Genre affinity matrix ───────────────────────────────────────────────────
 // Groups of genres that transition naturally into each other
@@ -121,6 +122,7 @@ export interface CompatibilityScore {
   genre: number;         // Genre affinity component
   vocal: number;         // Vocal contrast component (negative = bonus)
   instrumentation: number; // Instrumentation continuity
+  chords: number;        // Chord progression compatibility (negative = bonus)
 }
 
 /**
@@ -175,7 +177,15 @@ export function scoreTransition(a: Song, b: Song): CompatibilityScore {
   const instrContinuity = instrumentationContinuity(a, b);
   const instrScore = (1 - instrContinuity) * 10;
 
-  const total = bpmScore + keyScore + energyScore + genreScore + vocalScore + instrScore;
+  // Chords: -15 to 0 (compatible progressions are a bonus, reduces total)
+  const chordCompat = scoreChordCompatibility(
+    a.chords_verse, a.chords_chorus,
+    b.chords_verse, b.chords_chorus,
+  );
+  // Scale 0-100 chord score to -15..0 bonus (only applies when both songs have data)
+  const chordScore = chordCompat.hasData ? -(chordCompat.score / 100) * 15 : 0;
+
+  const total = bpmScore + keyScore + energyScore + genreScore + vocalScore + instrScore + chordScore;
 
   return {
     total,
@@ -185,6 +195,7 @@ export function scoreTransition(a: Song, b: Song): CompatibilityScore {
     genre: genreScore,
     vocal: vocalScore,
     instrumentation: instrScore,
+    chords: chordScore,
   };
 }
 

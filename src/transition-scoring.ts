@@ -15,6 +15,7 @@ import {
   isHalfDoubleTime,
 } from './camelot';
 import { scoreTransition, type CompatibilityScore } from './compatibility';
+import { scoreChordCompatibility } from './chord-compatibility';
 
 // ── Transition classification ─────────────────────────────────────────────
 
@@ -256,6 +257,16 @@ function scoreMashupPotential(
     from.keyboard_driven && to.keyboard_driven,
   ].filter(Boolean).length;
   score += shared * 3;
+
+  // Chord compatibility: similar progressions mashup much better
+  const chordCompat = scoreChordCompatibility(
+    from.chords_verse, from.chords_chorus,
+    to.chords_verse, to.chords_chorus,
+  );
+  if (chordCompat.hasData) {
+    score += Math.round(chordCompat.score * 0.15); // Up to +15 for identical chords
+    if (chordCompat.exactMatch) score += 5;        // Extra bonus for exact same progression
+  }
 
   return Math.min(100, score);
 }

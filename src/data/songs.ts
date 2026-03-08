@@ -12,6 +12,8 @@ export type SongTuple = [
   'L' | 'M' | 'H', // energy
   number, // flags: bitfield [singalong, horn, keys, guitar, dance_hi, dance_med]
   string, // notes
+  string?, // chords_verse (Roman numerals, e.g. "I-VI-IV-V")
+  string?, // chords_chorus (Roman numerals, e.g. "I-V-VI-IV")
 ];
 
 const VOCAL_MAP = { M: 'Male', F: 'Female', X: 'Mixed', I: 'Instrumental' } as const;
@@ -37,6 +39,8 @@ function makeSong(t: SongTuple): Song {
     guitar_driven: !!(flags & 4),
     danceability: (flags & 2) ? 'High' : (flags & 1) ? 'Medium' : 'Low',
     notes: t[10],
+    chords_verse: t[11] || '',
+    chords_chorus: t[12] || '',
   };
 }
 
