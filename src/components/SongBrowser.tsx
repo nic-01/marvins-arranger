@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { Song, Filters } from '../types';
+import type { Song, Filters, SongPreference } from '../types';
 import { getCamelotCode } from '../camelot';
 
 interface SongBrowserProps {
@@ -8,6 +8,10 @@ interface SongBrowserProps {
   onRemoveFromMedley?: (songId: string) => void;
   onBulkAdd?: (songs: Song[]) => void;
   medleySongIds: Set<string>;
+  starredIds?: Set<string>;
+  deletedIds?: Set<string>;
+  onPreferenceChange?: (songId: string, pref: SongPreference) => void;
+  showPreferences?: boolean;
 }
 
 const DECADES = ['All', '1920s', '1930s', '1940s', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
@@ -34,7 +38,7 @@ function getDecadeColor(decade: string): string {
 type SortField = 'year' | 'title' | 'artist' | 'bpm' | 'key' | 'energy';
 type SortDir = 'asc' | 'desc';
 
-export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, medleySongIds }: SongBrowserProps) {
+export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, medleySongIds, starredIds, deletedIds, onPreferenceChange, showPreferences }: SongBrowserProps) {
   const [filters, setFilters] = useState<Filters>({
     decade: 'All',
     bpmMin: 0,
@@ -60,14 +64,16 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
     return ['All', ...Array.from(k).sort()];
   }, [songs]);
 
+  const [showDeleted, setShowDeleted] = useState(false);
+
   const filtered = useMemo(() => {
     let result = songs;
+    // Hide deleted songs by default when preferences are enabled
+    if (showPreferences && deletedIds && !showDeleted) {
+      result = result.filter((s) => !deletedIds.has(s.id));
+    }
     if (filters.decade !== 'All') {
-      if (filters.decade === '1920s' || filters.decade === '1930s' || filters.decade === '1940s') {
-        result = result.filter((s) => s.decade === filters.decade);
-      } else {
-        result = result.filter((s) => s.decade === filters.decade);
-      }
+      result = result.filter((s) => s.decade === filters.decade);
     }
     if (filters.bpmMin > 0) result = result.filter((s) => s.bpm >= filters.bpmMin);
     if (filters.bpmMax < 300) result = result.filter((s) => s.bpm <= filters.bpmMax);
@@ -193,10 +199,20 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
         </div>
       </div>
 
+      {showPreferences && deletedIds && deletedIds.size > 0 && (
+        <div style={{ padding: '4px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
+            Show {deletedIds.size} deleted
+          </label>
+        </div>
+      )}
+
       <div style={styles.tableContainer}>
         <table style={styles.table}>
           <thead>
             <tr>
+              {showPreferences && <th style={styles.th}>Pref</th>}
               <th style={styles.th}></th>
               <th style={styles.th} onClick={() => handleSort('year')}>Year{sortIcon('year')}</th>
               <th style={{ ...styles.th, textAlign: 'left' as const }} onClick={() => handleSort('title')}>Title{sortIcon('title')}</th>
@@ -209,11 +225,41 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
           <tbody>
             {filtered.map((song) => {
               const inMedley = medleySongIds.has(song.id);
+              const isStarred = starredIds?.has(song.id) || false;
+              const isDeleted = deletedIds?.has(song.id) || false;
               return (
                 <tr
                   key={song.id}
-                  style={styles.tr}
+                  style={{
+                    ...styles.tr,
+                    ...(isDeleted ? { opacity: 0.4 } : {}),
+                    ...(isStarred ? { background: 'rgba(255, 215, 0, 0.08)' } : {}),
+                  }}
                 >
+                  {showPreferences && onPreferenceChange && (
+                    <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                      <button
+                        onClick={() => onPreferenceChange(song.id, isStarred ? 'open' : 'starred')}
+                        style={{
+                          ...styles.prefBtn,
+                          color: isStarred ? '#ffd700' : 'var(--text-muted)',
+                        }}
+                        title={isStarred ? 'Unstar' : 'Star (must include)'}
+                      >
+                        {isStarred ? '\u2605' : '\u2606'}
+                      </button>
+                      <button
+                        onClick={() => onPreferenceChange(song.id, isDeleted ? 'open' : 'deleted')}
+                        style={{
+                          ...styles.prefBtn,
+                          color: isDeleted ? 'var(--red)' : 'var(--text-muted)',
+                        }}
+                        title={isDeleted ? 'Restore' : 'Delete (exclude)'}
+                      >
+                        {isDeleted ? '\u21A9' : '\u2715'}
+                      </button>
+                    </td>
+                  )}
                   <td style={styles.td}>
                     <button
                       onClick={() => inMedley ? onRemoveFromMedley?.(song.id) : onAddToMedley(song)}
@@ -223,7 +269,7 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
                       }}
                       title={inMedley ? 'Remove from medley' : 'Add to medley'}
                     >
-                      {inMedley ? '×' : '+'}
+                      {inMedley ? '\u00d7' : '+'}
                     </button>
                   </td>
                   <td style={styles.td}>
@@ -376,5 +422,13 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'var(--red)',
     color: '#fff',
     borderColor: 'var(--red)',
+  },
+  prefBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    padding: '0 2px',
+    lineHeight: 1,
   },
 };

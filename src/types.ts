@@ -72,3 +72,18 @@ export interface CamelotPosition {
   number: number; // 1-12
   letter: 'A' | 'B'; // A = minor, B = major
 }
+
+// Song preference tracking
+export type SongPreference = 'starred' | 'deleted' | 'open';
+
+export interface SongPreferenceLog {
+  songId: string;
+  action: SongPreference;
+  timestamp: number;
+}
+
+export interface SongPreferences {
+  starred: Set<string>;
+  deleted: Set<string>;
+  log: SongPreferenceLog[];
+}

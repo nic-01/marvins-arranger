@@ -1,15 +1,16 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { Song, MedleySong, EasterEgg } from './types';
+import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog } from './types';
 import SongBrowser from './components/SongBrowser';
 import MedleyPlanner from './components/MedleyPlanner';
+import BlockGenerator from './components/BlockGenerator';
 import EasterEggTracker, { DEFAULT_EGGS } from './components/EasterEggTracker';
 import ArrangementView from './components/ArrangementView';
 import ExportPanel from './components/ExportPanel';
 import { allSongs } from './data';
 
-type Tab = 'planner' | 'arrangement';
+type Tab = 'planner' | 'blocks' | 'arrangement';
 type RightTab = 'eggs' | 'export';
-type MobilePanel = 'browse' | 'planner' | 'arrangement' | 'eggs' | 'export';
+type MobilePanel = 'browse' | 'planner' | 'blocks' | 'arrangement' | 'eggs' | 'export';
 
 function useIsMobile(breakpoint = 768): boolean {
   const [isMobile, setIsMobile] = useState(
@@ -48,6 +49,36 @@ function App() {
     loadFromStorage('medley-eggs', DEFAULT_EGGS.map((egg) => ({ ...egg, id: generateId() })))
   );
 
+  // Song preferences (star/delete)
+  const [starredIds, setStarredIds] = useState<Set<string>>(() => {
+    const stored = loadFromStorage<string[]>('song-starred', []);
+    return new Set(stored);
+  });
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => {
+    const stored = loadFromStorage<string[]>('song-deleted', []);
+    return new Set(stored);
+  });
+  const [prefLog, setPrefLog] = useState<SongPreferenceLog[]>(() =>
+    loadFromStorage('song-pref-log', [])
+  );
+
+  const handlePreferenceChange = useCallback((songId: string, pref: SongPreference) => {
+    const logEntry: SongPreferenceLog = { songId, action: pref, timestamp: Date.now() };
+    setPrefLog(prev => [...prev, logEntry]);
+
+    if (pref === 'starred') {
+      setStarredIds(prev => { const next = new Set(prev); next.add(songId); return next; });
+      setDeletedIds(prev => { const next = new Set(prev); next.delete(songId); return next; });
+    } else if (pref === 'deleted') {
+      setDeletedIds(prev => { const next = new Set(prev); next.add(songId); return next; });
+      setStarredIds(prev => { const next = new Set(prev); next.delete(songId); return next; });
+    } else {
+      // 'open' — remove from both
+      setStarredIds(prev => { const next = new Set(prev); next.delete(songId); return next; });
+      setDeletedIds(prev => { const next = new Set(prev); next.delete(songId); return next; });
+    }
+  }, []);
+
   // Persist to localStorage
   useEffect(() => {
     localStorage.setItem('medley-songs', JSON.stringify(medleySongs));
@@ -56,6 +87,18 @@ function App() {
   useEffect(() => {
     localStorage.setItem('medley-eggs', JSON.stringify(easterEggs));
   }, [easterEggs]);
+
+  useEffect(() => {
+    localStorage.setItem('song-starred', JSON.stringify(Array.from(starredIds)));
+  }, [starredIds]);
+
+  useEffect(() => {
+    localStorage.setItem('song-deleted', JSON.stringify(Array.from(deletedIds)));
+  }, [deletedIds]);
+
+  useEffect(() => {
+    localStorage.setItem('song-pref-log', JSON.stringify(prefLog));
+  }, [prefLog]);
 
   const medleySongIds = useMemo(
     () => new Set(medleySongs.map((s) => s.id)),
@@ -138,6 +181,22 @@ function App() {
     );
   }, []);
 
+  const handleAcceptBlockArrangement = useCallback((songs: Song[]) => {
+    const medley = songs.map(s => ({
+      ...s,
+      medleyId: generateId(),
+      snippet_duration: s.crowd_singalong ? 55 : 45,
+      section: 'chorus' as const,
+      bar_count: 16,
+      transition_in: 'hard_cut' as const,
+      featured_instruments: [],
+      crowd_moment: s.crowd_singalong,
+      easter_egg: false,
+    }));
+    setMedleySongs(medley);
+    setActiveTab('planner');
+  }, []);
+
   // ── Mobile layout ──
   if (isMobile) {
     const totalSeconds = medleySongs.reduce((s, song) => s + song.snippet_duration, 0);
@@ -166,6 +225,10 @@ function App() {
               onRemoveFromMedley={handleRemoveFromMedley}
               onBulkAdd={handleBulkAdd}
               medleySongIds={medleySongIds}
+              starredIds={starredIds}
+              deletedIds={deletedIds}
+              onPreferenceChange={handlePreferenceChange}
+              showPreferences
             />
           )}
           {mobilePanel === 'planner' && (
@@ -176,6 +239,14 @@ function App() {
               onUpdateSong={handleUpdateSong}
               onReorderSong={handleReorderSong}
               onReplaceSongs={handleReplaceSongs}
+            />
+          )}
+          {mobilePanel === 'blocks' && (
+            <BlockGenerator
+              catalog={allSongs}
+              starredIds={starredIds}
+              deletedIds={deletedIds}
+              onAcceptArrangement={handleAcceptBlockArrangement}
             />
           )}
           {mobilePanel === 'arrangement' && (
@@ -200,7 +271,8 @@ function App() {
         {/* Bottom tab bar */}
         <div style={mStyles.tabBar}>
           {([
-            ['browse', 'Browse', '470'],
+            ['browse', 'Browse', allSongs.length.toString()],
+            ['blocks', 'Blocks', ''],
             ['planner', 'Medley', medleySongs.length.toString()],
             ['arrangement', 'Arrange', ''],
             ['eggs', 'Eggs', easterEggs.length.toString()],
@@ -238,6 +310,12 @@ function App() {
             Planner
           </button>
           <button
+            style={activeTab === 'blocks' ? styles.activeTab : styles.tab}
+            onClick={() => setActiveTab('blocks')}
+          >
+            Blocks
+          </button>
+          <button
             style={activeTab === 'arrangement' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('arrangement')}
           >
@@ -256,6 +334,10 @@ function App() {
             onAddToMedley={handleAddToMedley}
             onBulkAdd={handleBulkAdd}
             medleySongIds={medleySongIds}
+            starredIds={starredIds}
+            deletedIds={deletedIds}
+            onPreferenceChange={handlePreferenceChange}
+            showPreferences
           />
         </div>
 
@@ -268,6 +350,13 @@ function App() {
               onUpdateSong={handleUpdateSong}
               onReorderSong={handleReorderSong}
               onReplaceSongs={handleReplaceSongs}
+            />
+          ) : activeTab === 'blocks' ? (
+            <BlockGenerator
+              catalog={allSongs}
+              starredIds={starredIds}
+              deletedIds={deletedIds}
+              onAcceptArrangement={handleAcceptBlockArrangement}
             />
           ) : (
             <ArrangementView
