@@ -16,6 +16,7 @@ import type { PairScore, TransitionQuality } from '../transition-scoring';
 
 interface BlockGeneratorProps {
   catalog: Song[];
+  medleySongIds: Set<string>;
   starredIds: Set<string>;
   deletedIds: Set<string>;
   onAcceptArrangement?: (songs: Song[]) => void;
@@ -76,7 +77,7 @@ function buildBlockPreferenceLog(block: Block, rating: BlockRating): BlockPrefer
   };
 }
 
-export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings, blockPrefLog = [] }: BlockGeneratorProps) {
+export default function BlockGenerator({ catalog, medleySongIds, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings, blockPrefLog = [] }: BlockGeneratorProps) {
   const [discoveryResult, setDiscoveryResult] = useState<BlockDiscoveryResult | null>(null);
   const [assembly, setAssembly] = useState<AssembledMedley | null>(null);
   const [progressMsg, setProgressMsg] = useState<string>('');
@@ -85,9 +86,17 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
   const [selectedTransition, setSelectedTransition] = useState<PairScore | null>(null);
   const [viewMode, setViewMode] = useState<'discovery' | 'assembly'>('discovery');
 
+  // When the user has added songs to the medley, only use those; otherwise use full catalog
+  const effectiveCatalog = useMemo(() => {
+    if (medleySongIds.size > 0) {
+      return catalog.filter(s => medleySongIds.has(s.id));
+    }
+    return catalog;
+  }, [catalog, medleySongIds]);
+
   const availableCount = useMemo(() =>
-    catalog.filter(s => !deletedIds.has(s.id)).length,
-    [catalog, deletedIds]
+    effectiveCatalog.filter(s => !deletedIds.has(s.id)).length,
+    [effectiveCatalog, deletedIds]
   );
 
   const handleDiscover = () => {
@@ -98,7 +107,7 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
     setViewMode('discovery');
 
     setTimeout(() => {
-      const res = discoverBlocks(catalog, {
+      const res = discoverBlocks(effectiveCatalog, {
         starredIds,
         excludedIds: deletedIds,
       }, (p: DiscoveryProgress) => {
@@ -151,7 +160,7 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
         <div style={styles.headerLeft}>
           <h2 style={styles.title}>Block Generator</h2>
           <span style={styles.subtitle}>
-            {availableCount} songs available &middot; {starredIds.size} starred &middot; {deletedIds.size} excluded
+            {availableCount} songs available{medleySongIds.size > 0 ? ` (from ${medleySongIds.size} in medley)` : ''} &middot; {starredIds.size} starred &middot; {deletedIds.size} excluded
           </span>
         </div>
         <div style={styles.actions}>

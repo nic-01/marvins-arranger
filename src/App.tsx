@@ -311,6 +311,7 @@ function App() {
         {stage === 'blocks' && (
           <BlockGenerator
             catalog={allSongs}
+            medleySongIds={medleySongIds}
             starredIds={starredIds}
             deletedIds={deletedIds}
             onAcceptArrangement={handleAcceptBlockArrangement}
