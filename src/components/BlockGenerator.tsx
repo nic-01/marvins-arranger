@@ -13,6 +13,11 @@ import {
   type AssemblyProgress,
 } from '../block-assembly';
 import type { PairScore, TransitionQuality } from '../transition-scoring';
+import {
+  discoverPairs,
+  type PairDiscoveryResult,
+  type PairDiscoveryProgress,
+} from '../pair-scoring';
 
 interface BlockGeneratorProps {
   catalog: Song[];
@@ -79,12 +84,16 @@ function buildBlockPreferenceLog(block: Block, rating: BlockRating): BlockPrefer
 
 export default function BlockGenerator({ catalog, medleySongIds, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings, blockPrefLog = [] }: BlockGeneratorProps) {
   const [discoveryResult, setDiscoveryResult] = useState<BlockDiscoveryResult | null>(null);
+  const [pairResult, setPairResult] = useState<PairDiscoveryResult | null>(null);
   const [assembly, setAssembly] = useState<AssembledMedley | null>(null);
   const [progressMsg, setProgressMsg] = useState<string>('');
   const [running, setRunning] = useState(false);
   const [expandedBlock, setExpandedBlock] = useState<string | null>(null);
+  const [expandedPair, setExpandedPair] = useState<string | null>(null);
   const [selectedTransition, setSelectedTransition] = useState<PairScore | null>(null);
-  const [viewMode, setViewMode] = useState<'discovery' | 'assembly'>('discovery');
+  const [viewMode, setViewMode] = useState<'pairs' | 'discovery' | 'assembly'>('pairs');
+  const [pairDecadeFilter, setPairDecadeFilter] = useState<string>('all');
+  const [pairSortBy, setPairSortBy] = useState<'composite' | 'algo' | 'llm'>('composite');
 
   // When the user has added songs to the medley, only use those; otherwise use full catalog
   const effectiveCatalog = useMemo(() => {
@@ -98,6 +107,32 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
     effectiveCatalog.filter(s => !deletedIds.has(s.id)).length,
     [effectiveCatalog, deletedIds]
   );
+
+  const handleDiscoverPairs = async () => {
+    setRunning(true);
+    setPairResult(null);
+    setSelectedTransition(null);
+    setViewMode('pairs');
+    setProgressMsg('Generating candidate pairs...');
+
+    try {
+      const res = await discoverPairs(
+        effectiveCatalog,
+        {},
+        { excludedIds: deletedIds },
+        (p: PairDiscoveryProgress) => {
+          setProgressMsg(p.message);
+        }
+      );
+      setPairResult(res);
+    } catch (err) {
+      console.error('Pair discovery failed:', err);
+      setProgressMsg('Pair discovery failed');
+    } finally {
+      setRunning(false);
+      setProgressMsg('');
+    }
+  };
 
   const handleDiscover = () => {
     setRunning(true);
@@ -153,6 +188,33 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
     ? assembly.transitions
     : [];
 
+  const displayPairs = useMemo(() => {
+    if (!pairResult) return [];
+    let pairs = pairDecadeFilter === 'all'
+      ? [...pairResult.pairs]
+      : [...(pairResult.byDecade.get(pairDecadeFilter) || [])];
+
+    // Sort
+    if (pairSortBy === 'algo') {
+      pairs.sort((a, b) => b.algoScore - a.algoScore);
+    } else if (pairSortBy === 'llm') {
+      pairs.sort((a, b) => {
+        const aLlm = a.llmScore ? (a.llmScore.narrative + a.llmScore.transition + a.llmScore.mashup) / 3 : 0;
+        const bLlm = b.llmScore ? (b.llmScore.narrative + b.llmScore.transition + b.llmScore.mashup) / 3 : 0;
+        return bLlm - aLlm;
+      });
+    } else {
+      pairs.sort((a, b) => b.compositeScore - a.compositeScore);
+    }
+
+    return pairs;
+  }, [pairResult, pairDecadeFilter, pairSortBy]);
+
+  const pairDecades = useMemo(() => {
+    if (!pairResult) return [];
+    return [...pairResult.byDecade.keys()];
+  }, [pairResult]);
+
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -165,11 +227,18 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
         </div>
         <div style={styles.actions}>
           <button
-            onClick={handleDiscover}
+            onClick={handleDiscoverPairs}
             disabled={running || availableCount === 0}
             style={styles.primaryBtn}
           >
-            {running && !discoveryResult ? 'Discovering...' : '1. Discover Blocks'}
+            {running && viewMode === 'pairs' ? 'Finding Pairs...' : '1. Discover Pairs'}
+          </button>
+          <button
+            onClick={handleDiscover}
+            disabled={running || availableCount === 0}
+            style={{ ...styles.primaryBtn, opacity: pairResult ? 1 : 0.5 }}
+          >
+            {running && viewMode === 'discovery' ? 'Discovering...' : '2. Discover Blocks'}
           </button>
           {discoveryResult && (
             <button
@@ -177,7 +246,7 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
               disabled={running}
               style={styles.primaryBtn}
             >
-              {running && viewMode === 'assembly' ? 'Assembling...' : '2. Assemble Medley'}
+              {running && viewMode === 'assembly' ? 'Assembling...' : '3. Assemble Medley'}
             </button>
           )}
           {assembly && onAcceptArrangement && (
@@ -244,26 +313,266 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
         </div>
       )}
 
+      {/* Pairs stats */}
+      {pairResult && !running && viewMode === 'pairs' && (
+        <div style={styles.statsBanner}>
+          <span style={styles.stat}><strong>{pairResult.stats.totalPairs}</strong> pairs found</span>
+          <span style={styles.stat}>avg algo: <strong>{pairResult.stats.avgAlgoScore}</strong></span>
+          {pairResult.stats.llmScored > 0 && (
+            <span style={{ ...styles.stat, color: '#42a5f5' }}>
+              <strong>{pairResult.stats.llmScored}</strong> LLM scored
+            </span>
+          )}
+          {Object.entries(pairResult.stats.pairsPerDecade).map(([d, n]) => (
+            <span key={d} style={styles.stat}>{d}: <strong>{n}</strong></span>
+          ))}
+        </div>
+      )}
+
       {/* View toggle */}
-      {discoveryResult && assembly && !running && (
+      {(pairResult || discoveryResult || assembly) && !running && (
         <div style={styles.viewToggle}>
-          <button
-            style={viewMode === 'discovery' ? styles.toggleActive : styles.toggleBtn}
-            onClick={() => setViewMode('discovery')}
-          >
-            All Discovered ({discoveryResult.stats.totalBlocks})
-          </button>
-          <button
-            style={viewMode === 'assembly' ? styles.toggleActive : styles.toggleBtn}
-            onClick={() => setViewMode('assembly')}
-          >
-            Assembled Medley ({assembly.stats.blocksUsed})
-          </button>
+          {pairResult && (
+            <button
+              style={viewMode === 'pairs' ? styles.toggleActive : styles.toggleBtn}
+              onClick={() => setViewMode('pairs')}
+            >
+              Pairs ({pairResult.stats.totalPairs})
+            </button>
+          )}
+          {discoveryResult && (
+            <button
+              style={viewMode === 'discovery' ? styles.toggleActive : styles.toggleBtn}
+              onClick={() => setViewMode('discovery')}
+            >
+              Blocks ({discoveryResult.stats.totalBlocks})
+            </button>
+          )}
+          {assembly && (
+            <button
+              style={viewMode === 'assembly' ? styles.toggleActive : styles.toggleBtn}
+              onClick={() => setViewMode('assembly')}
+            >
+              Assembled ({assembly.stats.blocksUsed})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Pairs view */}
+      {viewMode === 'pairs' && pairResult && (
+        <div style={styles.blockList}>
+          {/* Pair filters */}
+          <div style={styles.pairFilters}>
+            <select
+              value={pairDecadeFilter}
+              onChange={e => setPairDecadeFilter(e.target.value)}
+              style={styles.filterSelect}
+            >
+              <option value="all">All decades ({pairResult.stats.totalPairs})</option>
+              {pairDecades.map(d => (
+                <option key={d} value={d}>
+                  {d} ({pairResult.stats.pairsPerDecade[d] || 0})
+                </option>
+              ))}
+            </select>
+            <select
+              value={pairSortBy}
+              onChange={e => setPairSortBy(e.target.value as 'composite' | 'algo' | 'llm')}
+              style={styles.filterSelect}
+            >
+              <option value="composite">Sort: Composite</option>
+              <option value="algo">Sort: Algo only</option>
+              <option value="llm">Sort: LLM only</option>
+            </select>
+            <span style={styles.stat}>
+              Showing <strong>{displayPairs.length}</strong> pairs
+            </span>
+          </div>
+
+          {/* Pair cards */}
+          {displayPairs.map((pair) => (
+            <div key={pair.id}>
+              <div
+                style={{
+                  ...styles.pairCard,
+                  borderLeftColor: pair.compositeScore >= 70 ? QUALITY_COLORS.mashup
+                    : pair.compositeScore >= 55 ? QUALITY_COLORS.smooth
+                    : pair.compositeScore >= 40 ? QUALITY_COLORS.workable
+                    : QUALITY_COLORS.hard,
+                }}
+                onClick={() => setExpandedPair(expandedPair === pair.id ? null : pair.id)}
+              >
+                <div style={styles.pairHeader}>
+                  <span style={styles.pairDecade}>{pair.decade}</span>
+                  <span style={styles.pairSongs}>
+                    <span style={{
+                      ...styles.songChip,
+                      borderLeftColor: getDecadeColor(pair.songA.year),
+                      background: starredIds.has(pair.songA.id) ? 'rgba(255, 215, 0, 0.15)' : 'var(--bg-tertiary)',
+                    }}>
+                      {starredIds.has(pair.songA.id) && <span style={{ color: '#ffd700', marginRight: 2 }}>{'\u2605'}</span>}
+                      {pair.songA.title}
+                      <span style={styles.chipArtist}> - {pair.songA.artist}</span>
+                    </span>
+                    <span style={{
+                      ...styles.transitionDot,
+                      background: QUALITY_COLORS[pair.pairScoreAB.quality],
+                    }} />
+                    <span style={{
+                      ...styles.songChip,
+                      borderLeftColor: getDecadeColor(pair.songB.year),
+                      background: starredIds.has(pair.songB.id) ? 'rgba(255, 215, 0, 0.15)' : 'var(--bg-tertiary)',
+                    }}>
+                      {starredIds.has(pair.songB.id) && <span style={{ color: '#ffd700', marginRight: 2 }}>{'\u2605'}</span>}
+                      {pair.songB.title}
+                      <span style={styles.chipArtist}> - {pair.songB.artist}</span>
+                    </span>
+                  </span>
+                  <span style={styles.pairScores}>
+                    <span style={{
+                      ...styles.qualityBadge,
+                      background: pair.compositeScore >= 70 ? QUALITY_COLORS.smooth
+                        : pair.compositeScore >= 55 ? QUALITY_COLORS.workable
+                        : QUALITY_COLORS.hard,
+                    }}>
+                      {pair.compositeScore.toFixed(0)}
+                    </span>
+                    <span style={styles.pairScoreDetail}>
+                      algo {pair.algoScore.toFixed(0)}
+                    </span>
+                    {pair.llmScore && (
+                      <span style={{ ...styles.pairScoreDetail, color: '#42a5f5' }}>
+                        llm {((pair.llmScore.narrative + pair.llmScore.transition + pair.llmScore.mashup) / 3 * 10).toFixed(0)}
+                      </span>
+                    )}
+                  </span>
+                  {(pair.pairScoreAB.quality === 'mashup' || pair.pairScoreBA.quality === 'mashup') && (
+                    <span style={{ ...styles.qualityBadge, background: QUALITY_COLORS.mashup }}>MASHUP</span>
+                  )}
+                  {(pair.songA.crowd_singalong || pair.songB.crowd_singalong) && (
+                    <span style={{ ...styles.qualityBadge, background: '#42a5f5' }}>SING</span>
+                  )}
+                </div>
+
+                {/* LLM reasoning preview */}
+                {pair.llmScore && (
+                  <div style={styles.pairReasoning}>
+                    {pair.llmScore.reasoning}
+                  </div>
+                )}
+              </div>
+
+              {/* Expanded pair detail */}
+              {expandedPair === pair.id && (
+                <div style={styles.expandedDetail}>
+                  <div style={styles.pairDetailGrid}>
+                    {/* Song A details */}
+                    <div style={styles.pairDetailSong}>
+                      <div style={styles.pairDetailSongTitle}>
+                        <span style={{ borderLeft: `3px solid ${getDecadeColor(pair.songA.year)}`, paddingLeft: 6 }}>
+                          <strong>{pair.songA.title}</strong> - {pair.songA.artist} ({pair.songA.year})
+                        </span>
+                      </div>
+                      <div style={styles.pairDetailMeta}>
+                        <span>{pair.songA.bpm} BPM</span>
+                        <span style={{
+                          padding: '1px 4px', borderRadius: 3,
+                          background: getCamelotColor(pair.songA.key) + '33', fontSize: 11,
+                        }}>
+                          {pair.songA.key} ({getCamelotCode(pair.songA.key)})
+                        </span>
+                        <span style={{
+                          fontSize: 10, padding: '1px 6px', borderRadius: 8, color: '#000', fontWeight: 600,
+                          background: pair.songA.energy === 'High' ? 'var(--red)' : pair.songA.energy === 'Medium' ? 'var(--amber)' : 'var(--green)',
+                        }}>{pair.songA.energy}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{pair.songA.genre}</span>
+                      </div>
+                    </div>
+
+                    {/* Transition details */}
+                    <div style={styles.pairDetailTransition}>
+                      <div style={{ fontSize: 11, marginBottom: 4 }}>
+                        <strong>A{'\u2192'}B:</strong> {pair.pairScoreAB.score.toFixed(0)}
+                        <span style={{
+                          ...styles.transitionBadge,
+                          background: QUALITY_COLORS[pair.pairScoreAB.quality],
+                          marginLeft: 4,
+                        }}>
+                          {QUALITY_LABELS[pair.pairScoreAB.quality]}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, marginBottom: 4 }}>
+                        <strong>B{'\u2192'}A:</strong> {pair.pairScoreBA.score.toFixed(0)}
+                        <span style={{
+                          ...styles.transitionBadge,
+                          background: QUALITY_COLORS[pair.pairScoreBA.quality],
+                          marginLeft: 4,
+                        }}>
+                          {QUALITY_LABELS[pair.pairScoreBA.quality]}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
+                        Best direction: <strong>{pair.bestDirection === 'AB' ? `${pair.songA.title} \u2192 ${pair.songB.title}` : `${pair.songB.title} \u2192 ${pair.songA.title}`}</strong>
+                      </div>
+                    </div>
+
+                    {/* Song B details */}
+                    <div style={styles.pairDetailSong}>
+                      <div style={styles.pairDetailSongTitle}>
+                        <span style={{ borderLeft: `3px solid ${getDecadeColor(pair.songB.year)}`, paddingLeft: 6 }}>
+                          <strong>{pair.songB.title}</strong> - {pair.songB.artist} ({pair.songB.year})
+                        </span>
+                      </div>
+                      <div style={styles.pairDetailMeta}>
+                        <span>{pair.songB.bpm} BPM</span>
+                        <span style={{
+                          padding: '1px 4px', borderRadius: 3,
+                          background: getCamelotColor(pair.songB.key) + '33', fontSize: 11,
+                        }}>
+                          {pair.songB.key} ({getCamelotCode(pair.songB.key)})
+                        </span>
+                        <span style={{
+                          fontSize: 10, padding: '1px 6px', borderRadius: 8, color: '#000', fontWeight: 600,
+                          background: pair.songB.energy === 'High' ? 'var(--red)' : pair.songB.energy === 'Medium' ? 'var(--amber)' : 'var(--green)',
+                        }}>{pair.songB.energy}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{pair.songB.genre}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed metrics */}
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11, marginTop: 8, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                    <span>Mashup potential: <strong>{Math.max(pair.pairScoreAB.mashupPotential, pair.pairScoreBA.mashupPotential)}/100</strong></span>
+                    <span>Key distance: <strong>{pair.pairScoreAB.keyDistance} steps</strong></span>
+                    <span>BPM diff: <strong>{Math.abs(pair.songA.bpm - pair.songB.bpm)}</strong></span>
+                    <span>Tempo syncable: <strong>{pair.pairScoreAB.tempoSyncable ? 'Yes' : 'No'}</strong></span>
+                    <span>Vocal contrast: <strong>{pair.pairScoreAB.vocalContrast ? 'Yes' : 'No'}</strong></span>
+                    <span>Energy: <strong>{pair.pairScoreAB.energyFlow}</strong></span>
+                  </div>
+
+                  {/* LLM detail */}
+                  {pair.llmScore && (
+                    <div style={{ fontSize: 11, marginTop: 8, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', gap: 16, marginBottom: 4 }}>
+                        <span>Narrative: <strong style={{ color: pair.llmScore.narrative >= 7 ? QUALITY_COLORS.mashup : pair.llmScore.narrative >= 5 ? QUALITY_COLORS.smooth : 'var(--text-secondary)' }}>{pair.llmScore.narrative}/10</strong></span>
+                        <span>Transition: <strong style={{ color: pair.llmScore.transition >= 7 ? QUALITY_COLORS.mashup : pair.llmScore.transition >= 5 ? QUALITY_COLORS.smooth : 'var(--text-secondary)' }}>{pair.llmScore.transition}/10</strong></span>
+                        <span>Mashup: <strong style={{ color: pair.llmScore.mashup >= 7 ? QUALITY_COLORS.mashup : pair.llmScore.mashup >= 5 ? QUALITY_COLORS.smooth : 'var(--text-secondary)' }}>{pair.llmScore.mashup}/10</strong></span>
+                      </div>
+                      <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                        {pair.llmScore.reasoning}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
       {/* Block list */}
-      <div style={styles.blockList}>
+      <div style={{ ...styles.blockList, display: viewMode === 'pairs' ? 'none' : undefined }}>
         {displayBlocks.map((block, bi) => (
           <div key={block.id}>
             <div
@@ -745,5 +1054,92 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     padding: '0 1px',
     lineHeight: 1,
+  },
+  // Pair-specific styles
+  pairFilters: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+    flexWrap: 'wrap' as const,
+  },
+  filterSelect: {
+    padding: '4px 8px',
+    fontSize: 11,
+    borderRadius: 4,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-secondary)',
+    color: 'var(--text-primary)',
+  },
+  pairCard: {
+    background: 'var(--bg-secondary)',
+    borderRadius: 8,
+    padding: '8px 14px',
+    borderLeft: '4px solid',
+    cursor: 'pointer',
+    marginBottom: 2,
+  },
+  pairHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap' as const,
+  },
+  pairDecade: {
+    fontSize: 11,
+    fontWeight: 700,
+    minWidth: 50,
+  },
+  pairSongs: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    minWidth: 0,
+  },
+  pairScores: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 'auto',
+    flexShrink: 0,
+  },
+  pairScoreDetail: {
+    fontSize: 10,
+    color: 'var(--text-secondary)',
+  },
+  pairReasoning: {
+    fontSize: 10,
+    color: 'var(--text-secondary)',
+    fontStyle: 'italic',
+    marginTop: 4,
+    lineHeight: 1.3,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+  },
+  pairDetailGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr auto 1fr',
+    gap: 12,
+    alignItems: 'start',
+  },
+  pairDetailSong: {},
+  pairDetailSongTitle: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  pairDetailMeta: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    fontSize: 11,
+    flexWrap: 'wrap' as const,
+  },
+  pairDetailTransition: {
+    padding: '4px 12px',
+    borderLeft: '1px solid var(--border)',
+    borderRight: '1px solid var(--border)',
+    textAlign: 'center' as const,
   },
 };

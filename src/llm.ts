@@ -253,6 +253,84 @@ Respond as JSON:
   }
 }
 
+// ── Pair scoring ────────────────────────────────────────────────────────────
+
+export interface LLMPairScore {
+  songATitle: string;
+  songBTitle: string;
+  narrative: number;    // 1-10: Does B following A (or vice versa) tell a story?
+  transition: number;   // 1-10: Would this be a "moment" for the audience?
+  mashup: number;       // 1-10: Could these overlay musically?
+  reasoning: string;    // Brief explanation
+}
+
+/**
+ * Send a batch of candidate pairs to the LLM for creative scoring.
+ * Pairs are undirected — the LLM scores the pairing itself, not a specific direction.
+ */
+export async function scorePairBatchLLM(
+  pairs: Array<{
+    songA: Song;
+    songB: Song;
+    algoScore: number;
+    pairScoreAB: { mashupPotential: number; quality: string };
+    pairScoreBA: { mashupPotential: number; quality: string };
+  }>
+): Promise<LLMPairScore[]> {
+  const systemPrompt = `You are a world-class musical director arranging a "100 Years of Music" medley for a live 10-piece band with horns. You have deep knowledge of popular music history, performance dynamics, and audience engagement.
+
+Your job: score candidate song PAIRS for a medley. These are potential neighbors — songs that would be played back-to-back (in either order). Score each pair on:
+
+1. **narrative** (1-10): Do these songs have a natural connection? Cultural link, thematic resonance, artist connection, era-defining pairing? Would audiences feel "yes, of course those go together"? A 10 means iconic pairing (like "Stayin' Alive" into "Le Freak"), a 1 means no connection beyond technical compatibility.
+
+2. **transition** (1-10): Would the transition between these songs be a "moment"? Consider groove continuity, energy flow, key/tempo compatibility (already scored algorithmically — focus on the FEEL). A 10 means the band would nail this and the crowd would roar. A 1 means it would feel forced.
+
+3. **mashup** (1-10): Could these songs be overlaid — one song's groove/instrumental under the other's vocals? Consider rhythmic compatibility, harmonic fit, and whether it would sound intentional vs. chaotic. A 10 means a mashup DJ would already have done this. A 1 means they'd never work together.
+
+Be discriminating. Most pairs should score 3-6. Reserve 8-10 for genuinely special pairings. Give 1-2 for pairs that technically work but have no musical chemistry.
+
+Respond with a JSON array only — no other text.`;
+
+  const pairList = pairs.map((p, i) => {
+    const mashup = Math.max(p.pairScoreAB.mashupPotential, p.pairScoreBA.mashupPotential);
+    const quality = p.pairScoreAB.quality === 'mashup' || p.pairScoreBA.quality === 'mashup'
+      ? 'mashup' : p.pairScoreAB.quality;
+    return `[${i + 1}] "${p.songA.title}" - ${p.songA.artist} (${p.songA.year}, ${p.songA.bpm}bpm ${p.songA.key}, ${p.songA.genre}, ${p.songA.energy}) ↔ "${p.songB.title}" - ${p.songB.artist} (${p.songB.year}, ${p.songB.bpm}bpm ${p.songB.key}, ${p.songB.genre}, ${p.songB.energy}) [algo:${p.algoScore}, mashup:${mashup}, quality:${quality}]`;
+  }).join('\n');
+
+  const userMessage = `Score these ${pairs.length} song pairs for a live medley. For each, rate narrative, transition, and mashup potential (1-10) with brief reasoning.
+
+${pairList}
+
+Respond as JSON array:
+[
+  {"songATitle": "...", "songBTitle": "...", "narrative": N, "transition": N, "mashup": N, "reasoning": "..."},
+  ...
+]`;
+
+  const response = await callClaude(
+    [{ role: 'user', content: userMessage }],
+    systemPrompt,
+    Math.min(16000, pairs.length * 200)
+  );
+
+  try {
+    const jsonMatch = response.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON array in response');
+    const parsed = JSON.parse(jsonMatch[0]) as LLMPairScore[];
+    // Validate and clamp scores
+    return parsed.map(s => ({
+      ...s,
+      narrative: Math.min(10, Math.max(1, Math.round(s.narrative))),
+      transition: Math.min(10, Math.max(1, Math.round(s.transition))),
+      mashup: Math.min(10, Math.max(1, Math.round(s.mashup))),
+    }));
+  } catch {
+    console.warn('Failed to parse LLM pair scores:', response.slice(0, 200));
+    return [];
+  }
+}
+
 // ── Bridge song identification ──────────────────────────────────────────────
 
 export interface BridgeSongSuggestion {
