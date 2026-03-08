@@ -308,7 +308,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    borderRight: '1px solid var(--border)',
+    // Full-screen in staged layout, no border needed
   },
   header: {
     display: 'flex',

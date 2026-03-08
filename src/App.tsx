@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog } from './types';
+import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog, BlockRating } from './types';
 import SongBrowser from './components/SongBrowser';
 import MedleyPlanner from './components/MedleyPlanner';
 import BlockGenerator from './components/BlockGenerator';
@@ -8,21 +8,8 @@ import ArrangementView from './components/ArrangementView';
 import ExportPanel from './components/ExportPanel';
 import { allSongs } from './data';
 
-type Tab = 'planner' | 'blocks' | 'arrangement';
-type RightTab = 'eggs' | 'export';
-type MobilePanel = 'browse' | 'planner' | 'blocks' | 'arrangement' | 'eggs' | 'export';
-
-function useIsMobile(breakpoint = 768): boolean {
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-  );
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, [breakpoint]);
-  return isMobile;
-}
+// Full-screen staged workflow
+type Stage = 'songs' | 'blocks' | 'arrange' | 'export';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
@@ -37,13 +24,11 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 function App() {
-  const isMobile = useIsMobile();
+  const [stage, setStage] = useState<Stage>('songs');
+
   const [medleySongs, setMedleySongs] = useState<MedleySong[]>(() =>
     loadFromStorage('medley-songs', [])
   );
-  const [activeTab, setActiveTab] = useState<Tab>('planner');
-  const [rightTab, setRightTab] = useState<RightTab>('eggs');
-  const [mobilePanel, setMobilePanel] = useState<MobilePanel>('browse');
 
   const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(() =>
     loadFromStorage('medley-eggs', DEFAULT_EGGS.map((egg) => ({ ...egg, id: generateId() })))
@@ -62,6 +47,24 @@ function App() {
     loadFromStorage('song-pref-log', [])
   );
 
+  // Block preferences (Netflix-style ratings)
+  const [blockPrefLog, setBlockPrefLog] = useState<BlockPreferenceLog[]>(() =>
+    loadFromStorage('block-pref-log', [])
+  );
+
+  const blockRatings = useMemo(() => {
+    const map = new Map<string, BlockRating>();
+    // Latest rating wins (log is append-only)
+    for (const entry of blockPrefLog) {
+      map.set(entry.blockFingerprint, entry.rating);
+    }
+    return map;
+  }, [blockPrefLog]);
+
+  const handleRateBlock = useCallback((log: BlockPreferenceLog) => {
+    setBlockPrefLog(prev => [...prev, log]);
+  }, []);
+
   const handlePreferenceChange = useCallback((songId: string, pref: SongPreference) => {
     const logEntry: SongPreferenceLog = { songId, action: pref, timestamp: Date.now() };
     setPrefLog(prev => [...prev, logEntry]);
@@ -73,32 +76,18 @@ function App() {
       setDeletedIds(prev => { const next = new Set(prev); next.add(songId); return next; });
       setStarredIds(prev => { const next = new Set(prev); next.delete(songId); return next; });
     } else {
-      // 'open' — remove from both
       setStarredIds(prev => { const next = new Set(prev); next.delete(songId); return next; });
       setDeletedIds(prev => { const next = new Set(prev); next.delete(songId); return next; });
     }
   }, []);
 
   // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem('medley-songs', JSON.stringify(medleySongs));
-  }, [medleySongs]);
-
-  useEffect(() => {
-    localStorage.setItem('medley-eggs', JSON.stringify(easterEggs));
-  }, [easterEggs]);
-
-  useEffect(() => {
-    localStorage.setItem('song-starred', JSON.stringify(Array.from(starredIds)));
-  }, [starredIds]);
-
-  useEffect(() => {
-    localStorage.setItem('song-deleted', JSON.stringify(Array.from(deletedIds)));
-  }, [deletedIds]);
-
-  useEffect(() => {
-    localStorage.setItem('song-pref-log', JSON.stringify(prefLog));
-  }, [prefLog]);
+  useEffect(() => { localStorage.setItem('medley-songs', JSON.stringify(medleySongs)); }, [medleySongs]);
+  useEffect(() => { localStorage.setItem('medley-eggs', JSON.stringify(easterEggs)); }, [easterEggs]);
+  useEffect(() => { localStorage.setItem('song-starred', JSON.stringify(Array.from(starredIds))); }, [starredIds]);
+  useEffect(() => { localStorage.setItem('song-deleted', JSON.stringify(Array.from(deletedIds))); }, [deletedIds]);
+  useEffect(() => { localStorage.setItem('song-pref-log', JSON.stringify(prefLog)); }, [prefLog]);
+  useEffect(() => { localStorage.setItem('block-pref-log', JSON.stringify(blockPrefLog)); }, [blockPrefLog]);
 
   const medleySongIds = useMemo(
     () => new Set(medleySongs.map((s) => s.id)),
@@ -128,9 +117,7 @@ function App() {
   const handleBulkAdd = useCallback((songs: Song[]) => {
     setMedleySongs((prev) => {
       const existingIds = new Set(prev.map((s) => s.id));
-      const newSongs = songs
-        .filter((s) => !existingIds.has(s.id))
-        .map(songToMedley);
+      const newSongs = songs.filter((s) => !existingIds.has(s.id)).map(songToMedley);
       const updated = [...prev, ...newSongs];
       updated.sort((a, b) => a.year - b.year || a.title.localeCompare(b.title));
       return updated;
@@ -194,144 +181,64 @@ function App() {
       easter_egg: false,
     }));
     setMedleySongs(medley);
-    setActiveTab('planner');
+    setStage('arrange');
   }, []);
 
-  // ── Mobile layout ──
-  if (isMobile) {
-    const totalSeconds = medleySongs.reduce((s, song) => s + song.snippet_duration, 0);
-    const totalMin = Math.floor(totalSeconds / 60);
-    const totalSec = totalSeconds % 60;
+  // Stage definitions
+  const stages: { key: Stage; label: string; badge?: string }[] = [
+    { key: 'songs', label: '1. Songs', badge: `${allSongs.length - deletedIds.size}` },
+    { key: 'blocks', label: '2. Blocks' },
+    { key: 'arrange', label: '3. Arrange', badge: medleySongs.length > 0 ? `${medleySongs.length}` : undefined },
+    { key: 'export', label: '4. Export' },
+  ];
 
-    return (
-      <div style={mStyles.app}>
-        {/* Mobile header */}
-        <div style={mStyles.header}>
-          <h1 style={mStyles.logo}>100 Years' Medley</h1>
-          <div style={mStyles.headerStats}>
-            <span style={mStyles.headerBadge}>{medleySongs.length} in medley</span>
-            {medleySongs.length > 0 && (
-              <span style={mStyles.headerBadge}>{totalMin}:{totalSec.toString().padStart(2, '0')}</span>
-            )}
-          </div>
-        </div>
+  const totalSeconds = medleySongs.reduce((s, song) => s + song.snippet_duration, 0);
+  const totalMin = Math.floor(totalSeconds / 60);
+  const totalSec = totalSeconds % 60;
 
-        {/* Mobile content */}
-        <div style={mStyles.content}>
-          {mobilePanel === 'browse' && (
-            <SongBrowser
-              songs={allSongs}
-              onAddToMedley={handleAddToMedley}
-              onRemoveFromMedley={handleRemoveFromMedley}
-              onBulkAdd={handleBulkAdd}
-              medleySongIds={medleySongIds}
-              starredIds={starredIds}
-              deletedIds={deletedIds}
-              onPreferenceChange={handlePreferenceChange}
-              showPreferences
-            />
-          )}
-          {mobilePanel === 'planner' && (
-            <MedleyPlanner
-              songs={medleySongs}
-              catalog={allSongs}
-              onRemoveSong={handleRemoveSong}
-              onUpdateSong={handleUpdateSong}
-              onReorderSong={handleReorderSong}
-              onReplaceSongs={handleReplaceSongs}
-            />
-          )}
-          {mobilePanel === 'blocks' && (
-            <BlockGenerator
-              catalog={allSongs}
-              starredIds={starredIds}
-              deletedIds={deletedIds}
-              onAcceptArrangement={handleAcceptBlockArrangement}
-            />
-          )}
-          {mobilePanel === 'arrangement' && (
-            <ArrangementView
-              songs={medleySongs}
-              onUpdateSong={handleUpdateSong}
-            />
-          )}
-          {mobilePanel === 'eggs' && (
-            <EasterEggTracker
-              eggs={easterEggs}
-              onAddEgg={handleAddEgg}
-              onRemoveEgg={handleRemoveEgg}
-              onUpdateEgg={handleUpdateEgg}
-            />
-          )}
-          {mobilePanel === 'export' && (
-            <ExportPanel songs={medleySongs} eggs={easterEggs} />
-          )}
-        </div>
-
-        {/* Bottom tab bar */}
-        <div style={mStyles.tabBar}>
-          {([
-            ['browse', 'Browse', allSongs.length.toString()],
-            ['blocks', 'Blocks', ''],
-            ['planner', 'Medley', medleySongs.length.toString()],
-            ['arrangement', 'Arrange', ''],
-            ['eggs', 'Eggs', easterEggs.length.toString()],
-            ['export', 'Export', ''],
-          ] as [MobilePanel, string, string][]).map(([panel, label, badge]) => (
-            <button
-              key={panel}
-              onClick={() => setMobilePanel(panel)}
-              style={mobilePanel === panel ? mStyles.tabActive : mStyles.tabBtn}
-            >
-              <span style={mStyles.tabLabel}>{label}</span>
-              {badge && (
-                <span style={mStyles.tabBadge}>{badge}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Desktop layout ──
   return (
     <div style={styles.app}>
+      {/* Header bar */}
       <div style={styles.headerBar}>
         <div style={styles.headerLeft}>
           <h1 style={styles.logo}>The Hundred Years' Medley</h1>
           <span style={styles.subtitle}>Marvin's Arranger</span>
         </div>
+
         <div style={styles.headerTabs}>
-          <button
-            style={activeTab === 'planner' ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab('planner')}
-          >
-            Planner
-          </button>
-          <button
-            style={activeTab === 'blocks' ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab('blocks')}
-          >
-            Blocks
-          </button>
-          <button
-            style={activeTab === 'arrangement' ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab('arrangement')}
-          >
-            Arrangement
-          </button>
+          {stages.map(({ key, label, badge }) => (
+            <button
+              key={key}
+              style={stage === key ? styles.activeTab : styles.tab}
+              onClick={() => setStage(key)}
+            >
+              {label}
+              {badge && <span style={styles.tabBadge}>{badge}</span>}
+            </button>
+          ))}
         </div>
+
         <div style={styles.headerRight}>
-          <span style={styles.songCount}>{allSongs.length} songs in database</span>
+          {starredIds.size > 0 && (
+            <span style={styles.headerStat}>
+              <span style={{ color: '#ffd700' }}>{'\u2605'}</span> {starredIds.size} starred
+            </span>
+          )}
+          {medleySongs.length > 0 && (
+            <span style={styles.headerStat}>
+              {medleySongs.length} songs &middot; {totalMin}:{totalSec.toString().padStart(2, '0')}
+            </span>
+          )}
         </div>
       </div>
 
-      <div style={styles.main}>
-        <div style={styles.leftPanel}>
+      {/* Full-screen stage content */}
+      <div style={styles.stageContent}>
+        {stage === 'songs' && (
           <SongBrowser
             songs={allSongs}
             onAddToMedley={handleAddToMedley}
+            onRemoveFromMedley={handleRemoveFromMedley}
             onBulkAdd={handleBulkAdd}
             medleySongIds={medleySongIds}
             starredIds={starredIds}
@@ -339,156 +246,63 @@ function App() {
             onPreferenceChange={handlePreferenceChange}
             showPreferences
           />
-        </div>
+        )}
 
-        <div style={styles.centerPanel}>
-          {activeTab === 'planner' ? (
-            <MedleyPlanner
-              songs={medleySongs}
-              catalog={allSongs}
-              onRemoveSong={handleRemoveSong}
-              onUpdateSong={handleUpdateSong}
-              onReorderSong={handleReorderSong}
-              onReplaceSongs={handleReplaceSongs}
-            />
-          ) : activeTab === 'blocks' ? (
-            <BlockGenerator
-              catalog={allSongs}
-              starredIds={starredIds}
-              deletedIds={deletedIds}
-              onAcceptArrangement={handleAcceptBlockArrangement}
-            />
-          ) : (
-            <ArrangementView
-              songs={medleySongs}
-              onUpdateSong={handleUpdateSong}
-            />
-          )}
-        </div>
+        {stage === 'blocks' && (
+          <BlockGenerator
+            catalog={allSongs}
+            starredIds={starredIds}
+            deletedIds={deletedIds}
+            onAcceptArrangement={handleAcceptBlockArrangement}
+            onRateBlock={handleRateBlock}
+            blockRatings={blockRatings}
+          />
+        )}
 
-        <div style={styles.rightPanel}>
-          <div style={styles.rightTabs}>
-            <button
-              style={rightTab === 'eggs' ? styles.activeRightTab : styles.rightTabBtn}
-              onClick={() => setRightTab('eggs')}
-            >
-              Easter Eggs
-            </button>
-            <button
-              style={rightTab === 'export' ? styles.activeRightTab : styles.rightTabBtn}
-              onClick={() => setRightTab('export')}
-            >
-              Export
-            </button>
+        {stage === 'arrange' && (
+          <div style={styles.arrangeLayout}>
+            <div style={styles.arrangeMain}>
+              <MedleyPlanner
+                songs={medleySongs}
+                catalog={allSongs}
+                onRemoveSong={handleRemoveSong}
+                onUpdateSong={handleUpdateSong}
+                onReorderSong={handleReorderSong}
+                onReplaceSongs={handleReplaceSongs}
+              />
+            </div>
+            <div style={styles.arrangeSide}>
+              <ArrangementView
+                songs={medleySongs}
+                onUpdateSong={handleUpdateSong}
+              />
+            </div>
           </div>
-          <div style={styles.rightContent}>
-            {rightTab === 'eggs' ? (
+        )}
+
+        {stage === 'export' && (
+          <div style={styles.exportLayout}>
+            <div style={styles.exportMain}>
+              <ExportPanel songs={medleySongs} eggs={easterEggs} />
+            </div>
+            <div style={styles.exportSide}>
               <EasterEggTracker
                 eggs={easterEggs}
                 onAddEgg={handleAddEgg}
                 onRemoveEgg={handleRemoveEgg}
                 onUpdateEgg={handleUpdateEgg}
               />
-            ) : (
-              <ExportPanel songs={medleySongs} eggs={easterEggs} />
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Mobile styles ──
-const mStyles: Record<string, React.CSSProperties> = {
-  app: {
-    height: '100dvh',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0 12px',
-    height: 40,
-    background: 'var(--bg-secondary)',
-    borderBottom: '1px solid var(--border)',
-    flexShrink: 0,
-  },
-  logo: {
-    fontSize: 13,
-    fontWeight: 800,
-    background: 'linear-gradient(90deg, #ff6b6b, #ffa94d, #ffd43b, #69db7c, #3bc9db, #748ffc, #da77f2)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    whiteSpace: 'nowrap',
-  },
-  headerStats: {
-    display: 'flex',
-    gap: 6,
-  },
-  headerBadge: {
-    fontSize: 10,
-    padding: '2px 6px',
-    borderRadius: 8,
-    background: 'var(--bg-tertiary)',
-    color: 'var(--text-secondary)',
-    fontWeight: 600,
-  },
-  content: {
-    flex: 1,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  tabBar: {
-    display: 'flex',
-    background: 'var(--bg-secondary)',
-    borderTop: '1px solid var(--border)',
-    flexShrink: 0,
-    paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)',
-  },
-  tabBtn: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 1,
-    padding: '8px 4px 6px',
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--text-muted)',
-    cursor: 'pointer',
-  },
-  tabActive: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 1,
-    padding: '8px 4px 6px',
-    background: 'transparent',
-    border: 'none',
-    borderTop: '2px solid var(--accent)',
-    color: 'var(--accent)',
-    cursor: 'pointer',
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: 700,
-  },
-  tabBadge: {
-    fontSize: 9,
-    color: 'var(--text-muted)',
-  },
-};
-
-// ── Desktop styles ──
 const styles: Record<string, React.CSSProperties> = {
   app: {
-    height: '100vh',
+    height: '100dvh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -497,8 +311,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0 16px',
-    height: 44,
+    padding: '0 20px',
+    height: 48,
     background: 'var(--bg-secondary)',
     borderBottom: '1px solid var(--border)',
     flexShrink: 0,
@@ -507,6 +321,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'baseline',
     gap: 12,
+    flexShrink: 0,
   },
   logo: {
     fontSize: 15,
@@ -514,6 +329,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'linear-gradient(90deg, #ff6b6b, #ffa94d, #ffd43b, #69db7c, #3bc9db, #748ffc, #da77f2)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
+    margin: 0,
   },
   subtitle: {
     fontSize: 11,
@@ -521,7 +337,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   headerTabs: {
     display: 'flex',
-    gap: 4,
+    gap: 2,
   },
   tab: {
     padding: '6px 16px',
@@ -529,8 +345,12 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     color: 'var(--text-secondary)',
     cursor: 'pointer',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 600,
+    borderRadius: 6,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
   },
   activeTab: {
     padding: '6px 16px',
@@ -538,73 +358,68 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     color: 'var(--text-primary)',
     cursor: 'pointer',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 600,
-    borderRadius: 4,
+    borderRadius: 6,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tabBadge: {
+    fontSize: 10,
+    padding: '1px 5px',
+    borderRadius: 8,
+    background: 'var(--bg-secondary)',
+    color: 'var(--text-muted)',
+    fontWeight: 600,
   },
   headerRight: {
     display: 'flex',
     alignItems: 'center',
     gap: 12,
+    flexShrink: 0,
   },
-  songCount: {
+  headerStat: {
     fontSize: 11,
     color: 'var(--text-muted)',
   },
-  main: {
-    flex: 1,
-    display: 'flex',
-    overflow: 'hidden',
-  },
-  leftPanel: {
-    width: 520,
-    flexShrink: 0,
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  centerPanel: {
+  stageContent: {
     flex: 1,
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    borderLeft: '1px solid var(--border)',
+  },
+  // Arrange stage: medley planner (2/3) + arrangement view (1/3)
+  arrangeLayout: {
+    display: 'flex',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  arrangeMain: {
+    flex: 2,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
     borderRight: '1px solid var(--border)',
   },
-  rightPanel: {
-    width: 300,
-    flexShrink: 0,
+  arrangeSide: {
+    flex: 1,
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+  },
+  // Export stage: export (1/2) + easter eggs (1/2)
+  exportLayout: {
+    display: 'flex',
+    flex: 1,
     overflow: 'hidden',
   },
-  rightTabs: {
-    display: 'flex',
-    borderBottom: '1px solid var(--border)',
-  },
-  rightTabBtn: {
+  exportMain: {
     flex: 1,
-    padding: '8px',
-    background: 'transparent',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer',
-    fontSize: 11,
-    fontWeight: 600,
+    overflow: 'auto',
+    borderRight: '1px solid var(--border)',
   },
-  activeRightTab: {
-    flex: 1,
-    padding: '8px',
-    background: 'transparent',
-    border: 'none',
-    borderBottom: '2px solid var(--accent)',
-    color: 'var(--text-primary)',
-    cursor: 'pointer',
-    fontSize: 11,
-    fontWeight: 600,
-  },
-  rightContent: {
+  exportSide: {
     flex: 1,
     overflow: 'auto',
   },

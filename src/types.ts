@@ -87,3 +87,24 @@ export interface SongPreferences {
   deleted: Set<string>;
   log: SongPreferenceLog[];
 }
+
+// Block preference tracking (Netflix-style preference learning)
+export type BlockRating = 1 | 2 | 3 | 4 | 5;
+
+export interface BlockPreferenceLog {
+  /** Fingerprint: sorted song IDs joined, identifies a unique block composition */
+  blockFingerprint: string;
+  songIds: string[];
+  decade: string;
+  rating: BlockRating;
+  timestamp: number;
+  /** Metadata captured at rating time for ML/LLM analysis */
+  meta: {
+    avgScore: number;
+    avgEnergy: number;
+    hasMashup: boolean;
+    hasCrowdMoment: boolean;
+    bpmRange: [number, number];
+    genres: string[];
+  };
+}

@@ -1,392 +1,318 @@
 /**
- * Block Discovery Algorithm
+ * Per-Decade Block Discovery
  *
- * Two-stage process:
- * 1. Find optimal chronological path through selected songs using DP on a DAG
- * 2. Segment the path into blocks based on transition quality
+ * Stage 1 of the two-stage block architecture.
  *
- * The chronological constraint (songs must be in year order, reorderable within
- * a year) makes this a DAG shortest-path problem, which is solvable in O(V+E).
+ * For each decade:
+ * 1. Build a local compatibility matrix (only songs in that decade)
+ * 2. For each song, find its top-K neighbors by compatibility
+ * 3. Grow blocks greedily: start from each song, extend by picking the best
+ *    next neighbor that doesn't break BPM range (max 25 BPM spread) or key coherence
+ * 4. Score each block: internal transition cost + energy flow + crowd moment bonus
+ * 5. Deduplicate overlapping blocks (>50% shared songs → keep the better one)
+ *
+ * Result: blocks per decade, ready for Stage 2 assembly.
  */
 
 import type { Song } from './types';
-import {
-  buildPairMatrix,
-  scorePair,
-  type PairScore,
-  type PairMatrix,
-} from './transition-scoring';
+import { scorePair, type PairScore } from './transition-scoring';
+import { scoreTransition } from './compatibility';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
 export interface Block {
   id: string;
   songs: Song[];
-  transitions: PairScore[];  // transitions[i] = transition from songs[i] to songs[i+1]
-  avgScore: number;          // Average transition quality score (0-100)
+  decade: string;
+  transitions: PairScore[];       // transitions[i] = from songs[i] to songs[i+1]
+  entryBpm: number;               // BPM of first song
+  exitBpm: number;                // BPM of last song
+  entryKey: string;               // Key of first song
+  exitKey: string;                // Key of last song
+  avgScore: number;               // Average transition quality (0-100)
+  totalCost: number;              // Sum of raw compatibility costs (lower = better)
+  avgEnergy: number;              // 0-2 average
   bestTransition: PairScore | null;
   worstTransition: PairScore | null;
   hasMashup: boolean;
+  hasCrowdMoment: boolean;
   yearRange: [number, number];
 }
 
-export interface BlockDiscoveryResult {
+export interface DecadeBlocks {
+  decade: string;
   blocks: Block[];
-  path: Song[];              // Full ordered song list
-  transitions: PairScore[];  // All transitions in order
-  totalScore: number;        // Sum of all transition scores
-  avgScore: number;          // Average transition score
-  skippedSongs: Song[];      // Songs that couldn't fit well
+  songCount: number;              // Total unique songs in this decade
+  blocksGenerated: number;        // How many candidate blocks were found
+}
+
+export interface BlockDiscoveryResult {
+  decadeBlocks: DecadeBlocks[];
+  allBlocks: Block[];             // Flat list of all blocks across decades
   stats: {
-    mashupCount: number;
-    smoothCount: number;
-    workableCount: number;
-    hardCount: number;
-    blockCount: number;
+    totalBlocks: number;
+    totalUniqueSongs: number;
     avgBlockSize: number;
+    mashupBlocks: number;
+    crowdMomentBlocks: number;
+    decadeBreakdown: Record<string, number>;
   };
 }
 
 export interface BlockDiscoveryConfig {
-  maxYearGap: number;         // Max years between consecutive songs (default: 3)
-  beamWidth: number;          // Beam search width (default: 30)
-  minBlockScore: number;      // Min avg score to keep a transition smooth (default: 55)
-  maxBlockSize: number;       // Max songs per block (default: 8)
-  starredIds: Set<string>;    // Must-include songs
-  excludedIds: Set<string>;   // Must-exclude songs
+  minBlockSize: number;           // Min songs per block (default: 3)
+  maxBlockSize: number;           // Max songs per block (default: 6)
+  maxBpmSpread: number;           // Max BPM spread within a block (default: 25)
+  maxKeyDistance: number;         // Max avg Camelot distance within block (default: 3)
+  topKNeighbors: number;         // How many neighbors to consider per song (default: 20)
+  maxBlocksPerDecade: number;    // Max candidate blocks per decade (default: 200)
+  starredIds: Set<string>;       // Must-include songs
+  excludedIds: Set<string>;      // Must-exclude songs
 }
 
 export type DiscoveryProgress = {
-  stage: 'scoring' | 'pathfinding' | 'segmenting' | 'complete';
+  stage: 'scoring' | 'growing' | 'deduplicating' | 'complete';
   percent: number;
   message: string;
+  decade?: string;
 };
 
 const DEFAULT_CONFIG: BlockDiscoveryConfig = {
-  maxYearGap: 3,
-  beamWidth: 30,
-  minBlockScore: 55,
-  maxBlockSize: 8,
+  minBlockSize: 3,
+  maxBlockSize: 6,
+  maxBpmSpread: 25,
+  maxKeyDistance: 3,
+  topKNeighbors: 20,
+  maxBlocksPerDecade: 200,
   starredIds: new Set(),
   excludedIds: new Set(),
 };
 
-// ── Path finding (DP on chronological DAG) ────────────────────────────────
+const DECADE_ORDER = [
+  'The Sprint', '1950s', '1960s', '1970s', '1980s',
+  '1990s', '2000s', '2010s', '2020s',
+];
 
-interface DPState {
-  songIdx: number;
-  totalScore: number;
-  path: number[];        // Indices into sorted song array
-  starredHit: number;    // Count of starred songs included
+function getDecadeKey(song: Song): string {
+  if (song.year < 1950) return 'The Sprint';
+  return `${Math.floor(song.year / 10) * 10}s`;
 }
 
-/**
- * Find the optimal chronological path through the songs.
- *
- * Uses beam search on the chronological DAG:
- * - Nodes = songs sorted by year
- * - Edges = valid transitions (same year or +1-3 years forward)
- * - Must include all starred songs
- * - Maximizes total transition score
- */
-function findOptimalPath(
-  _songs: Song[],
-  matrix: PairMatrix,
-  config: BlockDiscoveryConfig,
-  onProgress?: (p: DiscoveryProgress) => void
-): { path: number[]; score: number; skippedIndices: number[] } {
-  const sorted = matrix.songs; // Already sorted by year
-  const n = sorted.length;
-
-  if (n === 0) return { path: [], score: 0, skippedIndices: [] };
-  if (n === 1) return { path: [0], score: 0, skippedIndices: [] };
-
-  // Index starred songs
-  const starredIndices = new Set<number>();
-  for (let i = 0; i < n; i++) {
-    if (config.starredIds.has(sorted[i].id)) {
-      starredIndices.add(i);
-    }
-  }
-  // Group songs by year for within-year ordering flexibility
-  const yearGroups = new Map<number, number[]>();
-  for (let i = 0; i < n; i++) {
-    const year = sorted[i].year;
-    if (!yearGroups.has(year)) yearGroups.set(year, []);
-    yearGroups.get(year)!.push(i);
-  }
-  const years = Array.from(yearGroups.keys()).sort((a, b) => a - b);
-
-  // Beam search: maintain top-K partial paths
-  // Start with each song in the earliest year as a potential starting point
-  const firstYear = years[0];
-  const startIndices = yearGroups.get(firstYear) || [];
-
-  let beam: DPState[] = startIndices.map(idx => ({
-    songIdx: idx,
-    totalScore: 0,
-    path: [idx],
-    starredHit: starredIndices.has(idx) ? 1 : 0,
-  }));
-
-  // Process year by year
-  for (let yi = 0; yi < years.length; yi++) {
-    const year = years[yi];
-    const nextYears: number[] = [];
-
-    // Collect songs from current year (not yet in path) + next few years
-    for (let yj = yi; yj < years.length && years[yj] <= year + config.maxYearGap; yj++) {
-      nextYears.push(years[yj]);
-    }
-
-    // For each beam state, try extending to each candidate in valid year range
-    const nextBeam: DPState[] = [];
-
-    for (const state of beam) {
-      const currentYear = sorted[state.songIdx].year;
-
-      // Find all valid next songs
-      const candidates: number[] = [];
-      for (const ny of nextYears) {
-        if (ny < currentYear) continue; // Can't go backwards
-        const group = yearGroups.get(ny) || [];
-        for (const idx of group) {
-          if (state.path.includes(idx)) continue; // Already visited
-          candidates.push(idx);
-        }
-      }
-
-      if (candidates.length === 0) {
-        // No more candidates — this path is complete
-        nextBeam.push(state);
-        continue;
-      }
-
-      // Score each candidate and keep the best
-      const scored = candidates.map(candIdx => {
-        const pair = scorePair(
-          sorted[state.songIdx],
-          sorted[candIdx],
-          state.songIdx,
-          candIdx
-        );
-
-        const isStarred = starredIndices.has(candIdx);
-        // Bonus for starred songs
-        const starBonus = isStarred ? 15 : 0;
-
-        return {
-          idx: candIdx,
-          score: pair.score + starBonus,
-          isStarred,
-        };
-      });
-
-      scored.sort((a, b) => b.score - a.score);
-
-      // Take top branchFactor candidates
-      const branchFactor = Math.min(5, scored.length);
-      for (let k = 0; k < branchFactor; k++) {
-        const cand = scored[k];
-        nextBeam.push({
-          songIdx: cand.idx,
-          totalScore: state.totalScore + cand.score,
-          path: [...state.path, cand.idx],
-          starredHit: state.starredHit + (cand.isStarred ? 1 : 0),
-        });
-      }
-
-      // Also keep the current state as-is (don't extend) so we can skip songs
-      nextBeam.push(state);
-    }
-
-    // Prune beam: prefer paths that hit more starred songs,
-    // then by score, normalized by path length
-    nextBeam.sort((a, b) => {
-      // First priority: starred songs coverage
-      if (a.starredHit !== b.starredHit) return b.starredHit - a.starredHit;
-      // Second: score per song (normalized)
-      const aAvg = a.path.length > 1 ? a.totalScore / (a.path.length - 1) : 0;
-      const bAvg = b.path.length > 1 ? b.totalScore / (b.path.length - 1) : 0;
-      return bAvg - aAvg;
-    });
-
-    beam = nextBeam.slice(0, config.beamWidth);
-
-    if (onProgress) {
-      onProgress({
-        stage: 'pathfinding',
-        percent: Math.round(((yi + 1) / years.length) * 100),
-        message: `Processing year ${year} (${yi + 1}/${years.length})`,
-      });
-    }
-  }
-
-  // Select best complete path
-  // Must include all starred songs if possible
-  beam.sort((a, b) => {
-    if (a.starredHit !== b.starredHit) return b.starredHit - a.starredHit;
-    // Among equal starred coverage, prefer longer paths with good avg score
-    const aAvg = a.path.length > 1 ? a.totalScore / (a.path.length - 1) : 0;
-    const bAvg = b.path.length > 1 ? b.totalScore / (b.path.length - 1) : 0;
-    if (Math.abs(aAvg - bAvg) < 5) {
-      return b.path.length - a.path.length; // Prefer more songs
-    }
-    return bAvg - aAvg;
-  });
-
-  const best = beam[0];
-  if (!best) return { path: [], score: 0, skippedIndices: [] };
-
-  // Find skipped songs
-  const pathSet = new Set(best.path);
-  const skippedIndices = [];
-  for (let i = 0; i < n; i++) {
-    if (!pathSet.has(i)) skippedIndices.push(i);
-  }
-
-  return {
-    path: best.path,
-    score: best.totalScore,
-    skippedIndices,
-  };
-}
-
-// ── Block segmentation ────────────────────────────────────────────────────
+// ── Block helpers ─────────────────────────────────────────────────────────
 
 function generateBlockId(): string {
   return 'blk-' + Math.random().toString(36).substring(2, 8);
 }
 
-/**
- * Segment an ordered path into blocks based on transition quality.
- * Cuts happen at the weakest transitions (lowest scores).
- */
-function segmentIntoBlocks(
-  path: number[],
-  sorted: Song[],
-  config: BlockDiscoveryConfig
-): { blocks: Block[]; transitions: PairScore[] } {
-  if (path.length === 0) return { blocks: [], transitions: [] };
-  if (path.length === 1) {
-    return {
-      blocks: [{
-        id: generateBlockId(),
-        songs: [sorted[path[0]]],
-        transitions: [],
-        avgScore: 100,
-        bestTransition: null,
-        worstTransition: null,
-        hasMashup: false,
-        yearRange: [sorted[path[0]].year, sorted[path[0]].year],
-      }],
-      transitions: [],
-    };
-  }
-
-  // Score all consecutive transitions
+function buildBlock(songs: Song[], decade: string): Block {
   const transitions: PairScore[] = [];
-  for (let i = 0; i < path.length - 1; i++) {
-    const pair = scorePair(
-      sorted[path[i]],
-      sorted[path[i + 1]],
-      path[i],
-      path[i + 1]
-    );
+  let totalCost = 0;
+
+  for (let i = 0; i < songs.length - 1; i++) {
+    const pair = scorePair(songs[i], songs[i + 1], i, i + 1);
     transitions.push(pair);
+    totalCost += scoreTransition(songs[i], songs[i + 1]).total;
   }
 
-  // Find natural block boundaries: transitions below minBlockScore
-  // or where quality drops to 'hard'
-  const cutPoints: number[] = []; // indices into transitions array where we cut
+  const energyMap = { Low: 0, Medium: 1, High: 2 };
+  const avgEnergy = songs.reduce((sum, s) => sum + energyMap[s.energy], 0) / songs.length;
 
-  for (let i = 0; i < transitions.length; i++) {
-    const t = transitions[i];
+  const avgScore = transitions.length > 0
+    ? transitions.reduce((sum, t) => sum + t.score, 0) / transitions.length
+    : 100;
 
-    // Cut at hard transitions
-    if (t.quality === 'hard') {
-      cutPoints.push(i);
-      continue;
-    }
+  return {
+    id: generateBlockId(),
+    songs,
+    decade,
+    transitions,
+    entryBpm: songs[0].bpm,
+    exitBpm: songs[songs.length - 1].bpm,
+    entryKey: songs[0].key,
+    exitKey: songs[songs.length - 1].key,
+    avgScore,
+    totalCost,
+    avgEnergy,
+    bestTransition: transitions.length > 0
+      ? transitions.reduce((a, b) => a.score > b.score ? a : b)
+      : null,
+    worstTransition: transitions.length > 0
+      ? transitions.reduce((a, b) => a.score < b.score ? a : b)
+      : null,
+    hasMashup: transitions.some(t => t.quality === 'mashup'),
+    hasCrowdMoment: songs.some(s => s.crowd_singalong),
+    yearRange: [
+      Math.min(...songs.map(s => s.year)),
+      Math.max(...songs.map(s => s.year)),
+    ],
+  };
+}
 
-    // Cut at workable transitions that are below threshold
-    if (t.score < config.minBlockScore) {
-      cutPoints.push(i);
-      continue;
-    }
+// ── Per-song neighbor finding ─────────────────────────────────────────────
+
+interface Neighbor {
+  songIdx: number;
+  score: number;       // PairScore.score (0-100, higher=better)
+  cost: number;        // Raw compatibility cost (lower=better)
+}
+
+function findNeighbors(
+  songs: Song[],
+  fromIdx: number,
+  topK: number
+): Neighbor[] {
+  const from = songs[fromIdx];
+  const neighbors: Neighbor[] = [];
+
+  for (let j = 0; j < songs.length; j++) {
+    if (j === fromIdx) continue;
+    const pair = scorePair(from, songs[j], fromIdx, j);
+    const cost = scoreTransition(from, songs[j]).total;
+    neighbors.push({ songIdx: j, score: pair.score, cost });
   }
 
-  // Also enforce max block size
-  const refinedCuts = new Set(cutPoints);
-  let lastCut = -1;
-  for (let i = 0; i < transitions.length; i++) {
-    const blockLen = i - lastCut;
-    if (blockLen >= config.maxBlockSize && !refinedCuts.has(i)) {
-      // Find the weakest transition in this oversized block to cut at
-      let weakest = i;
-      let weakestScore = Infinity;
-      for (let j = lastCut + 1; j <= i; j++) {
-        if (transitions[j].score < weakestScore) {
-          weakestScore = transitions[j].score;
-          weakest = j;
-        }
+  neighbors.sort((a, b) => b.score - a.score);
+  return neighbors.slice(0, topK);
+}
+
+// ── Greedy block growing ──────────────────────────────────────────────────
+
+function growBlock(
+  songs: Song[],
+  seedIdx: number,
+  neighborMap: Map<number, Neighbor[]>,
+  config: BlockDiscoveryConfig
+): number[] | null {
+  const seed = songs[seedIdx];
+  const block: number[] = [seedIdx];
+  const used = new Set<number>([seedIdx]);
+
+  let minBpm = seed.bpm;
+  let maxBpm = seed.bpm;
+
+  // Grow forward from seed
+  let currentIdx = seedIdx;
+  while (block.length < config.maxBlockSize) {
+    const neighbors = neighborMap.get(currentIdx) || [];
+    let bestNext: number | null = null;
+    let bestScore = -1;
+
+    for (const n of neighbors) {
+      if (used.has(n.songIdx)) continue;
+      const candidate = songs[n.songIdx];
+
+      // Check BPM spread constraint
+      const newMin = Math.min(minBpm, candidate.bpm);
+      const newMax = Math.max(maxBpm, candidate.bpm);
+      if (newMax - newMin > config.maxBpmSpread) continue;
+
+      if (n.score > bestScore) {
+        bestScore = n.score;
+        bestNext = n.songIdx;
       }
-      refinedCuts.add(weakest);
-      lastCut = weakest;
     }
-    if (refinedCuts.has(i)) lastCut = i;
+
+    if (bestNext === null || bestScore < 40) break; // No good candidate
+
+    block.push(bestNext);
+    used.add(bestNext);
+    const addedSong = songs[bestNext];
+    minBpm = Math.min(minBpm, addedSong.bpm);
+    maxBpm = Math.max(maxBpm, addedSong.bpm);
+    currentIdx = bestNext;
   }
 
-  // Build blocks from cut points
-  const sortedCuts = Array.from(refinedCuts).sort((a, b) => a - b);
-  const blocks: Block[] = [];
+  // Block must meet minimum size
+  if (block.length < config.minBlockSize) return null;
 
-  let blockStart = 0;
-  for (const cutIdx of [...sortedCuts, transitions.length]) {
-    // Block contains songs from blockStart to cutIdx (inclusive)
-    const blockSongIndices = path.slice(blockStart, cutIdx + 1);
-    const blockTransitions = transitions.slice(blockStart, cutIdx);
-    const blockSongs = blockSongIndices.map(i => sorted[i]);
+  return block;
+}
 
-    const avgScore = blockTransitions.length > 0
-      ? blockTransitions.reduce((sum, t) => sum + t.score, 0) / blockTransitions.length
-      : 100;
+// ── Deduplication ─────────────────────────────────────────────────────────
 
-    const best = blockTransitions.length > 0
-      ? blockTransitions.reduce((a, b) => a.score > b.score ? a : b)
-      : null;
-    const worst = blockTransitions.length > 0
-      ? blockTransitions.reduce((a, b) => a.score < b.score ? a : b)
-      : null;
+function deduplicateBlocks(blocks: Block[], maxKeep: number): Block[] {
+  // Sort by avgScore descending (keep best ones)
+  const sorted = [...blocks].sort((a, b) => b.avgScore - a.avgScore);
+  const kept: Block[] = [];
 
-    blocks.push({
-      id: generateBlockId(),
-      songs: blockSongs,
-      transitions: blockTransitions,
-      avgScore,
-      bestTransition: best,
-      worstTransition: worst,
-      hasMashup: blockTransitions.some(t => t.quality === 'mashup'),
-      yearRange: [
-        Math.min(...blockSongs.map(s => s.year)),
-        Math.max(...blockSongs.map(s => s.year)),
-      ],
-    });
+  for (const candidate of sorted) {
+    const candidateIds = new Set(candidate.songs.map(s => s.id));
 
-    blockStart = cutIdx + 1;
+    // Check overlap with already-kept blocks
+    let tooMuchOverlap = false;
+    for (const existing of kept) {
+      const existingIds = new Set(existing.songs.map(s => s.id));
+      let shared = 0;
+      for (const id of candidateIds) {
+        if (existingIds.has(id)) shared++;
+      }
+      const overlapRatio = shared / Math.min(candidateIds.size, existingIds.size);
+      if (overlapRatio > 0.5) {
+        tooMuchOverlap = true;
+        break;
+      }
+    }
+
+    if (!tooMuchOverlap) {
+      kept.push(candidate);
+      if (kept.length >= maxKeep) break;
+    }
   }
 
-  return { blocks, transitions };
+  return kept;
+}
+
+// ── Per-decade discovery ──────────────────────────────────────────────────
+
+function discoverDecadeBlocks(
+  songs: Song[],
+  decade: string,
+  config: BlockDiscoveryConfig
+): Block[] {
+  if (songs.length < config.minBlockSize) return [];
+
+  // Sort by year within decade, then by BPM for within-year ordering
+  const sorted = [...songs].sort((a, b) => a.year - b.year || a.bpm - b.bpm);
+
+  // Build neighbor map for all songs in this decade
+  const neighborMap = new Map<number, Neighbor[]>();
+  for (let i = 0; i < sorted.length; i++) {
+    neighborMap.set(i, findNeighbors(sorted, i, config.topKNeighbors));
+  }
+
+  // Grow blocks from each song as a seed
+  const candidateBlocks: Block[] = [];
+
+  for (let seedIdx = 0; seedIdx < sorted.length; seedIdx++) {
+    const blockIndices = growBlock(sorted, seedIdx, neighborMap, config);
+    if (!blockIndices) continue;
+
+    // Sort within block by year for chronological order
+    const blockSongs = blockIndices
+      .map(i => sorted[i])
+      .sort((a, b) => a.year - b.year);
+
+    const block = buildBlock(blockSongs, decade);
+
+    // Only keep blocks with decent internal quality
+    if (block.avgScore >= 45) {
+      candidateBlocks.push(block);
+    }
+  }
+
+  // Deduplicate: if two blocks share >50% songs, keep the one with better avgScore
+  return deduplicateBlocks(candidateBlocks, config.maxBlocksPerDecade);
 }
 
 // ── Main entry point ──────────────────────────────────────────────────────
 
 /**
- * Discover blocks of well-transitioning songs from a catalog.
+ * Discover blocks per decade from the full catalog.
  *
- * @param catalog - All available songs (filtered by user: starred + open, no deleted)
- * @param config - Configuration options
+ * @param catalog - All available songs
+ * @param config - Discovery configuration
  * @param onProgress - Progress callback
+ * @returns Blocks organized by decade
  */
 export function discoverBlocks(
   catalog: Song[],
@@ -398,179 +324,100 @@ export function discoverBlocks(
   // Filter out excluded songs
   const available = catalog.filter(s => !cfg.excludedIds.has(s.id));
 
-  if (available.length === 0) {
-    return {
-      blocks: [],
-      path: [],
-      transitions: [],
-      totalScore: 0,
-      avgScore: 0,
-      skippedSongs: [],
-      stats: {
-        mashupCount: 0,
-        smoothCount: 0,
-        workableCount: 0,
-        hardCount: 0,
-        blockCount: 0,
-        avgBlockSize: 0,
-      },
-    };
+  // Group songs by decade
+  const byDecade = new Map<string, Song[]>();
+  for (const song of available) {
+    const decade = getDecadeKey(song);
+    if (!byDecade.has(decade)) byDecade.set(decade, []);
+    byDecade.get(decade)!.push(song);
   }
 
-  // Stage 1: Build pair matrix
+  const decadeBlocks: DecadeBlocks[] = [];
+  const allBlocks: Block[] = [];
+  const decadeBreakdown: Record<string, number> = {};
+
+  // Process each decade
+  const decades = DECADE_ORDER.filter(d => byDecade.has(d));
+  for (let di = 0; di < decades.length; di++) {
+    const decade = decades[di];
+    const songs = byDecade.get(decade)!;
+
+    if (onProgress) {
+      onProgress({
+        stage: 'growing',
+        percent: Math.round((di / decades.length) * 80),
+        message: `Discovering blocks in ${decade} (${songs.length} songs)...`,
+        decade,
+      });
+    }
+
+    const blocks = discoverDecadeBlocks(songs, decade, cfg);
+
+    decadeBlocks.push({
+      decade,
+      blocks,
+      songCount: songs.length,
+      blocksGenerated: blocks.length,
+    });
+
+    allBlocks.push(...blocks);
+    decadeBreakdown[decade] = blocks.length;
+  }
+
   if (onProgress) {
-    onProgress({ stage: 'scoring', percent: 0, message: 'Scoring song pairs...' });
-  }
-  const matrix = buildPairMatrix(available, cfg.maxYearGap);
-
-  if (onProgress) {
-    onProgress({ stage: 'scoring', percent: 100, message: `Scored ${matrix.pairs.size} pairs` });
-  }
-
-  // Stage 2: Find optimal path
-  const { path, skippedIndices } = findOptimalPath(
-    available,
-    matrix,
-    cfg,
-    onProgress
-  );
-
-  // Stage 3: Segment into blocks
-  if (onProgress) {
-    onProgress({ stage: 'segmenting', percent: 0, message: 'Segmenting into blocks...' });
+    onProgress({
+      stage: 'deduplicating',
+      percent: 90,
+      message: 'Finalizing blocks...',
+    });
   }
 
-  const { blocks, transitions } = segmentIntoBlocks(path, matrix.songs, cfg);
-
-  const totalScore = transitions.reduce((sum, t) => sum + t.score, 0);
-  const avgScore = transitions.length > 0 ? totalScore / transitions.length : 0;
+  // Compute stats
+  const allSongsInBlocks = new Set<string>();
+  for (const block of allBlocks) {
+    for (const song of block.songs) {
+      allSongsInBlocks.add(song.id);
+    }
+  }
 
   const stats = {
-    mashupCount: transitions.filter(t => t.quality === 'mashup').length,
-    smoothCount: transitions.filter(t => t.quality === 'smooth').length,
-    workableCount: transitions.filter(t => t.quality === 'workable').length,
-    hardCount: transitions.filter(t => t.quality === 'hard').length,
-    blockCount: blocks.length,
-    avgBlockSize: blocks.length > 0
-      ? blocks.reduce((sum, b) => sum + b.songs.length, 0) / blocks.length
+    totalBlocks: allBlocks.length,
+    totalUniqueSongs: allSongsInBlocks.size,
+    avgBlockSize: allBlocks.length > 0
+      ? allBlocks.reduce((sum, b) => sum + b.songs.length, 0) / allBlocks.length
       : 0,
+    mashupBlocks: allBlocks.filter(b => b.hasMashup).length,
+    crowdMomentBlocks: allBlocks.filter(b => b.hasCrowdMoment).length,
+    decadeBreakdown,
   };
 
   if (onProgress) {
     onProgress({
       stage: 'complete',
       percent: 100,
-      message: `Found ${blocks.length} blocks with ${stats.mashupCount} mashup opportunities`,
+      message: `Found ${allBlocks.length} blocks across ${decades.length} decades`,
     });
   }
 
-  return {
-    blocks,
-    path: path.map(i => matrix.songs[i]),
-    transitions,
-    totalScore,
-    avgScore,
-    skippedSongs: skippedIndices.map(i => matrix.songs[i]),
-    stats,
-  };
+  return { decadeBlocks, allBlocks, stats };
 }
 
 // ── Block manipulation helpers ────────────────────────────────────────────
 
 /**
- * Swap two songs within the same year across blocks.
- * Returns updated blocks or null if the swap isn't valid.
+ * Remove a song from a block. If the block becomes too small, return null.
  */
-export function swapSongsInBlocks(
-  blocks: Block[],
-  blockAIdx: number,
-  songAIdx: number,
-  blockBIdx: number,
-  songBIdx: number
-): Block[] | null {
-  const songA = blocks[blockAIdx]?.songs[songAIdx];
-  const songB = blocks[blockBIdx]?.songs[songBIdx];
-  if (!songA || !songB) return null;
-
-  // Can only swap within the same year
-  if (songA.year !== songB.year) return null;
-
-  // Create new blocks with swapped songs
-  const newBlocks = blocks.map((b, bi) => {
-    const newSongs = [...b.songs];
-    if (bi === blockAIdx) newSongs[songAIdx] = songB;
-    if (bi === blockBIdx) newSongs[songBIdx] = songA;
-
-    // Rescore transitions
-    const newTransitions: PairScore[] = [];
-    for (let i = 0; i < newSongs.length - 1; i++) {
-      newTransitions.push(scorePair(newSongs[i], newSongs[i + 1], 0, 0));
-    }
-
-    const avgScore = newTransitions.length > 0
-      ? newTransitions.reduce((sum, t) => sum + t.score, 0) / newTransitions.length
-      : 100;
-
-    return {
-      ...b,
-      songs: newSongs,
-      transitions: newTransitions,
-      avgScore,
-      bestTransition: newTransitions.length > 0
-        ? newTransitions.reduce((a, c) => a.score > c.score ? a : c)
-        : null,
-      worstTransition: newTransitions.length > 0
-        ? newTransitions.reduce((a, c) => a.score < c.score ? a : c)
-        : null,
-      hasMashup: newTransitions.some(t => t.quality === 'mashup'),
-      yearRange: [
-        Math.min(...newSongs.map(s => s.year)),
-        Math.max(...newSongs.map(s => s.year)),
-      ] as [number, number],
-    };
-  });
-
-  return newBlocks;
+export function removeSongFromBlock(block: Block, songIdx: number): Block | null {
+  const newSongs = block.songs.filter((_, i) => i !== songIdx);
+  if (newSongs.length < 2) return null;
+  return buildBlock(newSongs, block.decade);
 }
 
 /**
- * Remove a song from a block. If the block becomes empty, remove it.
+ * Score how well block B follows block A (exit→entry transition).
  */
-export function removeSongFromBlock(
-  blocks: Block[],
-  blockIdx: number,
-  songIdx: number
-): Block[] {
-  const newBlocks = [...blocks];
-  const block = { ...newBlocks[blockIdx] };
-  block.songs = block.songs.filter((_, i) => i !== songIdx);
-
-  if (block.songs.length === 0) {
-    return newBlocks.filter((_, i) => i !== blockIdx);
-  }
-
-  // Rescore transitions
-  const newTransitions: PairScore[] = [];
-  for (let i = 0; i < block.songs.length - 1; i++) {
-    newTransitions.push(scorePair(block.songs[i], block.songs[i + 1], 0, 0));
-  }
-
-  block.transitions = newTransitions;
-  block.avgScore = newTransitions.length > 0
-    ? newTransitions.reduce((sum, t) => sum + t.score, 0) / newTransitions.length
-    : 100;
-  block.bestTransition = newTransitions.length > 0
-    ? newTransitions.reduce((a, b) => a.score > b.score ? a : b)
-    : null;
-  block.worstTransition = newTransitions.length > 0
-    ? newTransitions.reduce((a, b) => a.score < b.score ? a : b)
-    : null;
-  block.hasMashup = newTransitions.some(t => t.quality === 'mashup');
-  block.yearRange = [
-    Math.min(...block.songs.map(s => s.year)),
-    Math.max(...block.songs.map(s => s.year)),
-  ];
-
-  newBlocks[blockIdx] = block;
-  return newBlocks;
+export function scoreBlockTransition(blockA: Block, blockB: Block): PairScore {
+  const lastSong = blockA.songs[blockA.songs.length - 1];
+  const firstSong = blockB.songs[0];
+  return scorePair(lastSong, firstSong, 0, 0);
 }

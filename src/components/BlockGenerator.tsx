@@ -1,13 +1,17 @@
 import { useState, useMemo } from 'react';
-import type { Song } from '../types';
+import type { Song, BlockRating, BlockPreferenceLog } from '../types';
 import { getCamelotCode, getCamelotColor } from '../camelot';
 import {
   discoverBlocks,
-  removeSongFromBlock,
   type Block,
   type BlockDiscoveryResult,
   type DiscoveryProgress,
 } from '../block-discovery';
+import {
+  assembleBlocks,
+  type AssembledMedley,
+  type AssemblyProgress,
+} from '../block-assembly';
 import type { PairScore, TransitionQuality } from '../transition-scoring';
 
 interface BlockGeneratorProps {
@@ -15,6 +19,8 @@ interface BlockGeneratorProps {
   starredIds: Set<string>;
   deletedIds: Set<string>;
   onAcceptArrangement?: (songs: Song[]) => void;
+  onRateBlock?: (log: BlockPreferenceLog) => void;
+  blockRatings?: Map<string, BlockRating>;
 }
 
 const QUALITY_COLORS: Record<TransitionQuality, string> = {
@@ -47,119 +53,197 @@ function getDecadeColor(year: number): string {
   return map[decade] || 'var(--text-muted)';
 }
 
-export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcceptArrangement }: BlockGeneratorProps) {
-  const [result, setResult] = useState<BlockDiscoveryResult | null>(null);
-  const [blocks, setBlocks] = useState<Block[]>([]);
-  const [progress, setProgress] = useState<DiscoveryProgress | null>(null);
+function getBlockFingerprint(block: Block): string {
+  return [...block.songs.map(s => s.id)].sort().join('|');
+}
+
+function buildBlockPreferenceLog(block: Block, rating: BlockRating): BlockPreferenceLog {
+  return {
+    blockFingerprint: getBlockFingerprint(block),
+    songIds: block.songs.map(s => s.id),
+    decade: block.decade,
+    rating,
+    timestamp: Date.now(),
+    meta: {
+      avgScore: block.avgScore,
+      avgEnergy: block.avgEnergy,
+      hasMashup: block.hasMashup,
+      hasCrowdMoment: block.hasCrowdMoment,
+      bpmRange: [block.entryBpm, block.exitBpm],
+      genres: [...new Set(block.songs.map(s => s.genre))],
+    },
+  };
+}
+
+export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings }: BlockGeneratorProps) {
+  const [discoveryResult, setDiscoveryResult] = useState<BlockDiscoveryResult | null>(null);
+  const [assembly, setAssembly] = useState<AssembledMedley | null>(null);
+  const [progressMsg, setProgressMsg] = useState<string>('');
   const [running, setRunning] = useState(false);
   const [expandedBlock, setExpandedBlock] = useState<string | null>(null);
   const [selectedTransition, setSelectedTransition] = useState<PairScore | null>(null);
+  const [viewMode, setViewMode] = useState<'discovery' | 'assembly'>('discovery');
 
   const availableCount = useMemo(() =>
     catalog.filter(s => !deletedIds.has(s.id)).length,
     [catalog, deletedIds]
   );
 
-  const handleGenerate = () => {
+  const handleDiscover = () => {
     setRunning(true);
-    setResult(null);
+    setDiscoveryResult(null);
+    setAssembly(null);
     setSelectedTransition(null);
+    setViewMode('discovery');
 
-    // Run async to allow progress updates
     setTimeout(() => {
       const res = discoverBlocks(catalog, {
         starredIds,
         excludedIds: deletedIds,
-        beamWidth: 30,
-        maxYearGap: 3,
-        minBlockScore: 55,
-        maxBlockSize: 8,
-      }, setProgress);
+      }, (p: DiscoveryProgress) => {
+        setProgressMsg(p.message);
+      });
 
-      setResult(res);
-      setBlocks(res.blocks);
+      setDiscoveryResult(res);
       setRunning(false);
+      setProgressMsg('');
     }, 50);
   };
 
-  const handleRemoveSong = (blockIdx: number, songIdx: number) => {
-    const newBlocks = removeSongFromBlock(blocks, blockIdx, songIdx);
-    setBlocks(newBlocks);
+  const handleAssemble = () => {
+    if (!discoveryResult) return;
+    setRunning(true);
+    setViewMode('assembly');
+
+    setTimeout(() => {
+      const result = assembleBlocks(discoveryResult, {
+        starredIds,
+      }, (p: AssemblyProgress) => {
+        setProgressMsg(p.message);
+      });
+
+      setAssembly(result);
+      setRunning(false);
+      setProgressMsg('');
+    }, 50);
   };
 
   const handleAccept = () => {
-    if (!onAcceptArrangement || blocks.length === 0) return;
-    const allSongs = blocks.flatMap(b => b.songs);
-    onAcceptArrangement(allSongs);
+    if (!onAcceptArrangement || !assembly) return;
+    onAcceptArrangement(assembly.path);
   };
 
-  const totalSongs = blocks.reduce((sum, b) => sum + b.songs.length, 0);
+  const displayBlocks = viewMode === 'assembly' && assembly
+    ? assembly.blocks
+    : discoveryResult?.allBlocks || [];
+
+  const displayTransitions = viewMode === 'assembly' && assembly
+    ? assembly.transitions
+    : [];
 
   return (
     <div style={styles.container}>
+      {/* Header */}
       <div style={styles.header}>
-        <div>
+        <div style={styles.headerLeft}>
           <h2 style={styles.title}>Block Generator</h2>
           <span style={styles.subtitle}>
-            {availableCount} songs available ({starredIds.size} starred, {deletedIds.size} excluded)
+            {availableCount} songs available &middot; {starredIds.size} starred &middot; {deletedIds.size} excluded
           </span>
         </div>
         <div style={styles.actions}>
           <button
-            onClick={handleGenerate}
+            onClick={handleDiscover}
             disabled={running || availableCount === 0}
-            style={styles.generateBtn}
+            style={styles.primaryBtn}
           >
-            {running ? 'Generating...' : 'Generate Blocks'}
+            {running && !discoveryResult ? 'Discovering...' : '1. Discover Blocks'}
           </button>
-          {blocks.length > 0 && onAcceptArrangement && (
+          {discoveryResult && (
+            <button
+              onClick={handleAssemble}
+              disabled={running}
+              style={styles.primaryBtn}
+            >
+              {running && viewMode === 'assembly' ? 'Assembling...' : '2. Assemble Medley'}
+            </button>
+          )}
+          {assembly && onAcceptArrangement && (
             <button onClick={handleAccept} style={styles.acceptBtn}>
-              Accept ({totalSongs} songs)
+              Accept ({assembly.totalSongs} songs)
             </button>
           )}
         </div>
       </div>
 
-      {/* Progress bar */}
-      {running && progress && (
-        <div style={styles.progressBar}>
-          <div style={{ ...styles.progressFill, width: `${progress.percent}%` }} />
-          <span style={styles.progressText}>{progress.message}</span>
+      {/* Progress */}
+      {running && progressMsg && (
+        <div style={styles.progressBanner}>
+          {progressMsg}
         </div>
       )}
 
-      {/* Stats banner */}
-      {result && !running && (
+      {/* Stats */}
+      {discoveryResult && !running && viewMode === 'discovery' && (
         <div style={styles.statsBanner}>
-          <span style={styles.stat}>
-            <strong>{result.stats.blockCount}</strong> blocks
-          </span>
-          <span style={styles.stat}>
-            <strong>{totalSongs}</strong> songs
-          </span>
+          <span style={styles.stat}><strong>{discoveryResult.stats.totalBlocks}</strong> blocks found</span>
+          <span style={styles.stat}><strong>{discoveryResult.stats.totalUniqueSongs}</strong> unique songs</span>
+          <span style={styles.stat}>avg size: <strong>{discoveryResult.stats.avgBlockSize.toFixed(1)}</strong></span>
           <span style={{ ...styles.stat, color: QUALITY_COLORS.mashup }}>
-            <strong>{result.stats.mashupCount}</strong> mashups
-          </span>
-          <span style={{ ...styles.stat, color: QUALITY_COLORS.smooth }}>
-            <strong>{result.stats.smoothCount}</strong> smooth
-          </span>
-          <span style={{ ...styles.stat, color: QUALITY_COLORS.workable }}>
-            <strong>{result.stats.workableCount}</strong> workable
-          </span>
-          <span style={{ ...styles.stat, color: QUALITY_COLORS.hard }}>
-            <strong>{result.stats.hardCount}</strong> hard
+            <strong>{discoveryResult.stats.mashupBlocks}</strong> w/ mashup
           </span>
           <span style={styles.stat}>
-            avg score: <strong>{result.avgScore.toFixed(1)}</strong>
+            <strong>{discoveryResult.stats.crowdMomentBlocks}</strong> w/ singalong
           </span>
+          {Object.entries(discoveryResult.stats.decadeBreakdown).map(([d, n]) => (
+            <span key={d} style={styles.stat}>{d}: <strong>{n}</strong></span>
+          ))}
+        </div>
+      )}
+
+      {assembly && !running && viewMode === 'assembly' && (
+        <div style={styles.statsBanner}>
+          <span style={styles.stat}><strong>{assembly.stats.blocksUsed}</strong> blocks</span>
+          <span style={styles.stat}><strong>{assembly.stats.songsUsed}</strong> songs</span>
+          <span style={styles.stat}>~<strong>{Math.round(assembly.estimatedDuration / 60)}</strong> min</span>
+          <span style={styles.stat}>block quality: <strong>{assembly.avgBlockScore.toFixed(0)}</strong></span>
+          <span style={styles.stat}>transitions: <strong>{assembly.avgTransitionScore.toFixed(0)}</strong></span>
+          <span style={{ ...styles.stat, color: QUALITY_COLORS.mashup }}>
+            <strong>{assembly.stats.mashupBlocks}</strong> mashups
+          </span>
+          <span style={styles.stat}>
+            <strong>{assembly.stats.crowdMoments}</strong> singalongs
+          </span>
+          {assembly.stats.starredIncluded > 0 && (
+            <span style={{ ...styles.stat, color: '#ffd700' }}>
+              <strong>{assembly.stats.starredIncluded}</strong> starred
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* View toggle */}
+      {discoveryResult && assembly && !running && (
+        <div style={styles.viewToggle}>
+          <button
+            style={viewMode === 'discovery' ? styles.toggleActive : styles.toggleBtn}
+            onClick={() => setViewMode('discovery')}
+          >
+            All Discovered ({discoveryResult.stats.totalBlocks})
+          </button>
+          <button
+            style={viewMode === 'assembly' ? styles.toggleActive : styles.toggleBtn}
+            onClick={() => setViewMode('assembly')}
+          >
+            Assembled Medley ({assembly.stats.blocksUsed})
+          </button>
         </div>
       )}
 
       {/* Block list */}
       <div style={styles.blockList}>
-        {blocks.map((block, bi) => (
+        {displayBlocks.map((block, bi) => (
           <div key={block.id}>
-            {/* Block card */}
             <div
               style={{
                 ...styles.blockCard,
@@ -169,10 +253,10 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
             >
               <div style={styles.blockHeader}>
                 <span style={styles.blockLabel}>
-                  Block {bi + 1}
+                  {viewMode === 'assembly' ? `${bi + 1}.` : ''} {block.decade}
                 </span>
                 <span style={styles.blockMeta}>
-                  {block.songs.length} songs &middot; {block.yearRange[0]}-{block.yearRange[1]}
+                  {block.songs.length} songs &middot; {block.yearRange[0]}-{block.yearRange[1]} &middot; {block.entryBpm}-{block.exitBpm} BPM
                 </span>
                 <span style={{
                   ...styles.qualityBadge,
@@ -183,13 +267,39 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
                   avg {block.avgScore.toFixed(0)}
                 </span>
                 {block.hasMashup && (
-                  <span style={{ ...styles.qualityBadge, background: QUALITY_COLORS.mashup }}>
-                    MASHUP
+                  <span style={{ ...styles.qualityBadge, background: QUALITY_COLORS.mashup }}>MASHUP</span>
+                )}
+                {block.hasCrowdMoment && (
+                  <span style={{ ...styles.qualityBadge, background: '#42a5f5' }}>SING</span>
+                )}
+                {/* Block rating */}
+                {onRateBlock && (
+                  <span style={styles.ratingRow} onClick={(e) => e.stopPropagation()}>
+                    {([1, 2, 3, 4, 5] as BlockRating[]).map(r => {
+                      const fp = getBlockFingerprint(block);
+                      const current = blockRatings?.get(fp) || 0;
+                      return (
+                        <button
+                          key={r}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRateBlock(buildBlockPreferenceLog(block, r));
+                          }}
+                          style={{
+                            ...styles.ratingBtn,
+                            color: r <= current ? '#ffd700' : 'var(--text-muted)',
+                          }}
+                          title={`Rate ${r}/5`}
+                        >
+                          {r <= current ? '\u2605' : '\u2606'}
+                        </button>
+                      );
+                    })}
                   </span>
                 )}
               </div>
 
-              {/* Compact song list */}
+              {/* Song chips */}
               <div style={styles.songChips}>
                 {block.songs.map((song, si) => (
                   <span key={song.id + si} style={styles.songChipRow}>
@@ -201,14 +311,12 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
                       {starredIds.has(song.id) && <span style={{ color: '#ffd700', marginRight: 2 }}>{'\u2605'}</span>}
                       {song.title}
                       <span style={styles.chipArtist}> - {song.artist}</span>
-                      <span style={styles.chipYear}> ({song.year})</span>
                     </span>
                     {si < block.songs.length - 1 && block.transitions[si] && (
                       <span
                         style={{
                           ...styles.transitionDot,
                           background: QUALITY_COLORS[block.transitions[si].quality],
-                          cursor: 'pointer',
                         }}
                         title={`${QUALITY_LABELS[block.transitions[si].quality]} (${block.transitions[si].score.toFixed(0)})`}
                         onClick={(e) => {
@@ -222,13 +330,12 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
               </div>
             </div>
 
-            {/* Expanded block detail */}
+            {/* Expanded detail */}
             {expandedBlock === block.id && (
               <div style={styles.expandedDetail}>
                 <table style={styles.detailTable}>
                   <thead>
                     <tr>
-                      <th style={styles.detailTh}></th>
                       <th style={styles.detailTh}>Year</th>
                       <th style={{ ...styles.detailTh, textAlign: 'left' }}>Song</th>
                       <th style={styles.detailTh}>BPM</th>
@@ -243,15 +350,6 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
                       return (
                         <tr key={song.id + si} style={styles.detailRow}>
                           <td style={styles.detailTd}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleRemoveSong(bi, si); }}
-                              style={styles.removeBtn}
-                              title="Remove from block"
-                            >
-                              {'\u2715'}
-                            </button>
-                          </td>
-                          <td style={styles.detailTd}>
                             <span style={{ borderLeft: `3px solid ${getDecadeColor(song.year)}`, paddingLeft: 4 }}>
                               {song.year}
                             </span>
@@ -259,25 +357,21 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
                           <td style={{ ...styles.detailTd, textAlign: 'left' }}>
                             <strong>{song.title}</strong>
                             <span style={{ color: 'var(--text-secondary)' }}> - {song.artist}</span>
+                            {song.crowd_singalong && <span style={{ color: '#42a5f5', marginLeft: 4 }}>SING</span>}
                           </td>
                           <td style={styles.detailTd}>{song.bpm}</td>
                           <td style={styles.detailTd}>
                             <span style={{
-                              padding: '1px 4px',
-                              borderRadius: 3,
-                              background: getCamelotColor(song.key) + '33',
-                              fontSize: 11,
+                              padding: '1px 4px', borderRadius: 3,
+                              background: getCamelotColor(song.key) + '33', fontSize: 11,
                             }}>
                               {song.key} ({getCamelotCode(song.key)})
                             </span>
                           </td>
                           <td style={styles.detailTd}>
                             <span style={{
-                              fontSize: 10,
-                              padding: '1px 6px',
-                              borderRadius: 8,
-                              color: '#000',
-                              fontWeight: 600,
+                              fontSize: 10, padding: '1px 6px', borderRadius: 8,
+                              color: '#000', fontWeight: 600,
                               background: song.energy === 'High' ? 'var(--red)' : song.energy === 'Medium' ? 'var(--amber)' : 'var(--green)',
                             }}>
                               {song.energy}
@@ -305,37 +399,35 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
               </div>
             )}
 
-            {/* Inter-block transition indicator */}
-            {bi < blocks.length - 1 && (
+            {/* Inter-block transition (assembly view only) */}
+            {viewMode === 'assembly' && bi < displayBlocks.length - 1 && displayTransitions[bi] && (
               <div style={styles.blockGap}>
                 <div style={styles.blockGapLine} />
-                <span style={styles.blockGapLabel}>HARD CUT</span>
+                <span
+                  style={{
+                    ...styles.blockGapLabel,
+                    color: QUALITY_COLORS[displayTransitions[bi].quality],
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setSelectedTransition(displayTransitions[bi])}
+                >
+                  {QUALITY_LABELS[displayTransitions[bi].quality]} ({displayTransitions[bi].score.toFixed(0)})
+                </span>
+                <div style={styles.blockGapLine} />
+              </div>
+            )}
+
+            {/* Decade separator (discovery view) */}
+            {viewMode === 'discovery' && bi < displayBlocks.length - 1 &&
+              displayBlocks[bi].decade !== displayBlocks[bi + 1].decade && (
+              <div style={styles.decadeSeparator}>
+                <div style={styles.blockGapLine} />
+                <span style={styles.decadeLabel}>{displayBlocks[bi + 1].decade}</span>
                 <div style={styles.blockGapLine} />
               </div>
             )}
           </div>
         ))}
-
-        {/* Skipped songs */}
-        {result && result.skippedSongs.length > 0 && (
-          <div style={styles.skippedSection}>
-            <h4 style={styles.skippedTitle}>
-              {result.skippedSongs.length} songs not placed
-            </h4>
-            <div style={styles.skippedList}>
-              {result.skippedSongs.slice(0, 20).map(s => (
-                <span key={s.id} style={styles.skippedChip}>
-                  {s.title} - {s.artist} ({s.year})
-                </span>
-              ))}
-              {result.skippedSongs.length > 20 && (
-                <span style={styles.skippedChip}>
-                  ...and {result.skippedSongs.length - 20} more
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Transition detail panel */}
@@ -357,74 +449,31 @@ function TransitionDetail({ pair, onClose }: { pair: PairScore; onClose: () => v
         <button onClick={onClose} style={styles.closeBtn}>{'\u2715'}</button>
       </div>
       <div style={styles.transitionPanelBody}>
-        <div style={styles.transitionSongs}>
-          <div style={styles.transitionSong}>
-            <strong>{pair.from.title}</strong>
-            <span style={{ color: 'var(--text-secondary)' }}> - {pair.from.artist} ({pair.from.year})</span>
-            <div style={{ fontSize: 11, marginTop: 2 }}>
-              {pair.from.bpm} BPM &middot; {pair.from.key} ({getCamelotCode(pair.from.key)}) &middot; {pair.from.energy}
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12 }}>
+            <strong>{pair.from.title}</strong> ({pair.from.bpm} BPM, {pair.from.key})
           </div>
-          <div style={{
-            textAlign: 'center',
-            padding: '4px 0',
-            fontSize: 20,
-            color: QUALITY_COLORS[pair.quality],
+          <span style={{ color: QUALITY_COLORS[pair.quality], fontSize: 18 }}>{'\u2192'}</span>
+          <div style={{ fontSize: 12 }}>
+            <strong>{pair.to.title}</strong> ({pair.to.bpm} BPM, {pair.to.key})
+          </div>
+          <span style={{
+            ...styles.transitionBadge,
+            background: QUALITY_COLORS[pair.quality],
           }}>
-            {'\u2193'}
-          </div>
-          <div style={styles.transitionSong}>
-            <strong>{pair.to.title}</strong>
-            <span style={{ color: 'var(--text-secondary)' }}> - {pair.to.artist} ({pair.to.year})</span>
-            <div style={{ fontSize: 11, marginTop: 2 }}>
-              {pair.to.bpm} BPM &middot; {pair.to.key} ({getCamelotCode(pair.to.key)}) &middot; {pair.to.energy}
-            </div>
-          </div>
+            {QUALITY_LABELS[pair.quality]} ({pair.score.toFixed(0)})
+          </span>
         </div>
-
-        <div style={styles.transitionMetrics}>
-          <div style={styles.metric}>
-            <span style={styles.metricLabel}>Quality</span>
-            <span style={{
-              ...styles.transitionBadge,
-              background: QUALITY_COLORS[pair.quality],
-            }}>
-              {QUALITY_LABELS[pair.quality]} ({pair.score.toFixed(0)})
-            </span>
-          </div>
-          <div style={styles.metric}>
-            <span style={styles.metricLabel}>Mashup Potential</span>
-            <span>{pair.mashupPotential}/100</span>
-          </div>
-          <div style={styles.metric}>
-            <span style={styles.metricLabel}>Key Distance</span>
-            <span>{pair.keyDistance} steps{pair.suggestedKeyShift !== 0 ? ` (shift ${pair.suggestedKeyShift > 0 ? '+' : ''}${pair.suggestedKeyShift} = ${pair.keyShiftDifficulty})` : ''}</span>
-          </div>
-          <div style={styles.metric}>
-            <span style={styles.metricLabel}>Tempo</span>
-            <span>
-              {pair.tempoSyncable ? 'Syncable' : 'Needs change'}
-              {pair.halfDoubleTime ? ' (half/double time)' : ''}
-              {pair.tempoSyncable ? ` @ ${pair.tempoSyncBpm} BPM` : ''}
-            </span>
-          </div>
-          <div style={styles.metric}>
-            <span style={styles.metricLabel}>Energy Flow</span>
-            <span>{pair.energyFlow}</span>
-          </div>
-          <div style={styles.metric}>
-            <span style={styles.metricLabel}>BPM Diff</span>
-            <span>{Math.abs(pair.from.bpm - pair.to.bpm)} BPM ({(pair.bpmRatio * 100 - 100).toFixed(1)}%)</span>
-          </div>
-          <div style={styles.metric}>
-            <span style={styles.metricLabel}>Compatibility</span>
-            <span>
-              BPM:{pair.compatibility.bpm.toFixed(0)}
-              Key:{pair.compatibility.key.toFixed(0)}
-              Energy:{pair.compatibility.energy.toFixed(0)}
-              Genre:{pair.compatibility.genre.toFixed(0)}
-            </span>
-          </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11 }}>
+          <span>Mashup: <strong>{pair.mashupPotential}/100</strong></span>
+          <span>Key: <strong>{pair.keyDistance} steps</strong>
+            {pair.suggestedKeyShift !== 0 && ` (shift ${pair.suggestedKeyShift > 0 ? '+' : ''}${pair.suggestedKeyShift})`}
+          </span>
+          <span>Tempo: <strong>{pair.tempoSyncable ? `sync @ ${pair.tempoSyncBpm}` : 'needs change'}</strong>
+            {pair.halfDoubleTime && ' (half/double)'}
+          </span>
+          <span>Energy: <strong>{pair.energyFlow}</strong></span>
+          <span>BPM diff: <strong>{Math.abs(pair.from.bpm - pair.to.bpm)}</strong></span>
         </div>
       </div>
     </div>
@@ -437,28 +486,20 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     height: '100%',
     overflow: 'hidden',
+    position: 'relative',
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: '12px 16px 8px',
+    padding: '16px 24px 12px',
     flexShrink: 0,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: 700,
-    margin: 0,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: 'var(--text-secondary)',
-  },
-  actions: {
-    display: 'flex',
-    gap: 8,
-  },
-  generateBtn: {
+  headerLeft: {},
+  title: { fontSize: 18, fontWeight: 700, margin: 0 },
+  subtitle: { fontSize: 12, color: 'var(--text-secondary)' },
+  actions: { display: 'flex', gap: 8 },
+  primaryBtn: {
     padding: '8px 16px',
     fontSize: 13,
     fontWeight: 700,
@@ -478,69 +519,69 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#000',
     cursor: 'pointer',
   },
-  progressBar: {
-    height: 24,
-    margin: '0 16px 8px',
-    background: 'var(--bg-tertiary)',
-    borderRadius: 4,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    background: 'var(--accent)',
-    transition: 'width 0.3s',
-    borderRadius: 4,
-  },
-  progressText: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    fontSize: 10,
+  progressBanner: {
+    padding: '6px 24px',
+    fontSize: 12,
+    color: 'var(--accent)',
     fontWeight: 600,
-    color: 'var(--text-primary)',
   },
   statsBanner: {
     display: 'flex',
     gap: 12,
-    padding: '8px 16px',
+    padding: '8px 24px',
     background: 'var(--bg-tertiary)',
-    margin: '0 16px 8px',
+    margin: '0 24px 8px',
     borderRadius: 6,
     flexWrap: 'wrap',
   },
-  stat: {
+  stat: { fontSize: 11, color: 'var(--text-secondary)' },
+  viewToggle: {
+    display: 'flex',
+    gap: 4,
+    padding: '0 24px 8px',
+  },
+  toggleBtn: {
+    padding: '4px 12px',
     fontSize: 11,
+    fontWeight: 600,
+    borderRadius: 4,
+    border: '1px solid var(--border)',
+    background: 'transparent',
     color: 'var(--text-secondary)',
+    cursor: 'pointer',
+  },
+  toggleActive: {
+    padding: '4px 12px',
+    fontSize: 11,
+    fontWeight: 600,
+    borderRadius: 4,
+    border: '1px solid var(--accent)',
+    background: 'var(--accent)',
+    color: '#fff',
+    cursor: 'pointer',
   },
   blockList: {
     flex: 1,
     overflow: 'auto',
-    padding: '0 16px 16px',
+    padding: '0 24px 16px',
   },
   blockCard: {
     background: 'var(--bg-secondary)',
     borderRadius: 8,
-    padding: '10px 12px',
+    padding: '10px 14px',
     borderLeft: '4px solid',
     cursor: 'pointer',
-    transition: 'background 0.1s',
+    marginBottom: 2,
   },
   blockHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     marginBottom: 6,
+    flexWrap: 'wrap',
   },
-  blockLabel: {
-    fontSize: 12,
-    fontWeight: 700,
-  },
-  blockMeta: {
-    fontSize: 11,
-    color: 'var(--text-secondary)',
-  },
+  blockLabel: { fontSize: 12, fontWeight: 700 },
+  blockMeta: { fontSize: 11, color: 'var(--text-secondary)' },
   qualityBadge: {
     fontSize: 9,
     padding: '1px 6px',
@@ -554,11 +595,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 2,
     alignItems: 'center',
   },
-  songChipRow: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 2,
-  },
+  songChipRow: { display: 'inline-flex', alignItems: 'center', gap: 2 },
   songChip: {
     fontSize: 11,
     padding: '2px 6px',
@@ -566,43 +603,40 @@ const styles: Record<string, React.CSSProperties> = {
     borderLeft: '3px solid',
     whiteSpace: 'nowrap',
   },
-  chipArtist: {
-    color: 'var(--text-secondary)',
-    fontSize: 10,
-  },
-  chipYear: {
-    color: 'var(--text-muted)',
-    fontSize: 10,
-  },
+  chipArtist: { color: 'var(--text-secondary)', fontSize: 10 },
   transitionDot: {
     width: 8,
     height: 8,
     borderRadius: '50%',
     display: 'inline-block',
     flexShrink: 0,
+    cursor: 'pointer',
   },
   blockGap: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    padding: '6px 0',
+    padding: '4px 0',
   },
-  blockGapLine: {
-    flex: 1,
-    height: 1,
-    background: 'var(--border)',
+  blockGapLine: { flex: 1, height: 1, background: 'var(--border)' },
+  blockGapLabel: { fontSize: 9, fontWeight: 700, letterSpacing: 1 },
+  decadeSeparator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '10px 0 6px',
   },
-  blockGapLabel: {
-    fontSize: 9,
+  decadeLabel: {
+    fontSize: 11,
     fontWeight: 700,
-    color: '#f44336',
-    letterSpacing: 1,
+    color: 'var(--text-secondary)',
+    whiteSpace: 'nowrap',
   },
   expandedDetail: {
     background: 'var(--bg-primary)',
     border: '1px solid var(--border)',
     borderRadius: '0 0 8px 8px',
-    marginTop: -4,
+    marginTop: -2,
     padding: 8,
     marginBottom: 4,
   },
@@ -620,22 +654,8 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid var(--border)',
     textAlign: 'center',
   },
-  detailRow: {
-    borderBottom: '1px solid var(--bg-tertiary)',
-  },
-  detailTd: {
-    padding: '4px 6px',
-    textAlign: 'center',
-    fontSize: 12,
-  },
-  removeBtn: {
-    background: 'none',
-    border: 'none',
-    color: 'var(--text-muted)',
-    cursor: 'pointer',
-    fontSize: 11,
-    padding: '0 4px',
-  },
+  detailRow: { borderBottom: '1px solid var(--bg-tertiary)' },
+  detailTd: { padding: '4px 6px', textAlign: 'center', fontSize: 12 },
   transitionBadge: {
     fontSize: 9,
     padding: '1px 6px',
@@ -644,30 +664,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     display: 'inline-block',
   },
-  skippedSection: {
-    marginTop: 16,
-    padding: 12,
-    background: 'var(--bg-secondary)',
-    borderRadius: 8,
-  },
-  skippedTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    marginBottom: 8,
-    color: 'var(--text-secondary)',
-  },
-  skippedList: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  skippedChip: {
-    fontSize: 10,
-    padding: '2px 6px',
-    borderRadius: 4,
-    background: 'var(--bg-tertiary)',
-    color: 'var(--text-secondary)',
-  },
   transitionPanel: {
     position: 'absolute',
     bottom: 0,
@@ -675,15 +671,13 @@ const styles: Record<string, React.CSSProperties> = {
     right: 0,
     background: 'var(--bg-secondary)',
     borderTop: '2px solid var(--accent)',
-    maxHeight: '40%',
-    overflow: 'auto',
     zIndex: 10,
   },
   transitionPanelHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '8px 16px',
+    padding: '8px 24px',
     borderBottom: '1px solid var(--border)',
     fontSize: 13,
   },
@@ -694,27 +688,18 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 14,
   },
-  transitionPanelBody: {
-    padding: '8px 16px 16px',
+  transitionPanelBody: { padding: '8px 24px 16px' },
+  ratingRow: {
+    display: 'inline-flex',
+    gap: 1,
+    marginLeft: 'auto',
   },
-  transitionSongs: {
-    marginBottom: 12,
-  },
-  transitionSong: {
-    fontSize: 12,
-  },
-  transitionMetrics: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  metric: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: 11,
-  },
-  metricLabel: {
-    color: 'var(--text-secondary)',
-    fontWeight: 600,
+  ratingBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 14,
+    padding: '0 1px',
+    lineHeight: 1,
   },
 };
