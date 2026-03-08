@@ -256,6 +256,7 @@ function App() {
             onAcceptArrangement={handleAcceptBlockArrangement}
             onRateBlock={handleRateBlock}
             blockRatings={blockRatings}
+            blockPrefLog={blockPrefLog}
           />
         )}
 

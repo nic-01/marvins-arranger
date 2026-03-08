@@ -8,7 +8,7 @@
  * 4. Cross-decade transitions (pick/order edge blocks to minimize boundary cost)
  */
 
-import type { Song } from './types';
+import type { Song, BlockRating, BlockPreferenceLog } from './types';
 import { scorePair, type PairScore } from './transition-scoring';
 import { scoreTransition } from './compatibility';
 import {
@@ -29,6 +29,10 @@ export interface AssemblyConfig {
   starredIds: Set<string>;
   /** Simulated annealing iterations for edge optimization */
   annealingIterations: number;
+  /** Block preference log for preference-weighted selection */
+  blockPreferences: BlockPreferenceLog[];
+  /** Direct block ratings (fingerprint → rating) */
+  blockRatings: Map<string, BlockRating>;
 }
 
 export interface AssembledMedley {
@@ -72,12 +76,136 @@ const DEFAULT_CONFIG: AssemblyConfig = {
   targetDuration: 48 * 60,
   starredIds: new Set(),
   annealingIterations: 1500,
+  blockPreferences: [],
+  blockRatings: new Map(),
 };
 
 const DECADE_ORDER = [
   'The Sprint', '1950s', '1960s', '1970s', '1980s',
   '1990s', '2000s', '2010s', '2020s',
 ];
+
+// ── Preference learning ──────────────────────────────────────────────────
+
+/**
+ * Learned weights from user's block rating history.
+ * Analyzes patterns in what the user rates highly vs. poorly
+ * to bias future block selection — Netflix-style preference learning.
+ */
+interface PreferenceWeights {
+  /** Bonus/penalty for blocks with mashup potential (-1 to +1) */
+  mashupAffinity: number;
+  /** Bonus/penalty for crowd singalong blocks (-1 to +1) */
+  crowdAffinity: number;
+  /** Preferred energy level (0=low, 1=mid, 2=high) and strength */
+  energyPreference: number;
+  energyStrength: number;
+  /** Preferred avg block score range */
+  qualityFloor: number;
+  /** Number of ratings the weights are based on */
+  sampleCount: number;
+}
+
+function learnPreferenceWeights(logs: BlockPreferenceLog[]): PreferenceWeights {
+  const weights: PreferenceWeights = {
+    mashupAffinity: 0,
+    crowdAffinity: 0,
+    energyPreference: 1,
+    energyStrength: 0,
+    qualityFloor: 0,
+    sampleCount: logs.length,
+  };
+
+  if (logs.length < 3) return weights; // Need at least 3 ratings to learn
+
+  // Split into liked (4-5) and disliked (1-2) blocks
+  const liked = logs.filter(l => l.rating >= 4);
+  const disliked = logs.filter(l => l.rating <= 2);
+
+  if (liked.length === 0 && disliked.length === 0) return weights;
+
+  // Mashup affinity: do they prefer blocks with mashups?
+  const likedMashupRate = liked.length > 0
+    ? liked.filter(l => l.meta.hasMashup).length / liked.length
+    : 0.5;
+  const dislikedMashupRate = disliked.length > 0
+    ? disliked.filter(l => l.meta.hasMashup).length / disliked.length
+    : 0.5;
+  weights.mashupAffinity = likedMashupRate - dislikedMashupRate;
+
+  // Crowd singalong affinity
+  const likedCrowdRate = liked.length > 0
+    ? liked.filter(l => l.meta.hasCrowdMoment).length / liked.length
+    : 0.5;
+  const dislikedCrowdRate = disliked.length > 0
+    ? disliked.filter(l => l.meta.hasCrowdMoment).length / disliked.length
+    : 0.5;
+  weights.crowdAffinity = likedCrowdRate - dislikedCrowdRate;
+
+  // Energy preference: weighted average of liked blocks' energy
+  if (liked.length > 0) {
+    weights.energyPreference = liked.reduce((s, l) => s + l.meta.avgEnergy, 0) / liked.length;
+    // Strength: how consistently they prefer one energy level
+    const variance = liked.reduce((s, l) =>
+      s + Math.pow(l.meta.avgEnergy - weights.energyPreference, 2), 0) / liked.length;
+    weights.energyStrength = Math.max(0, 1 - variance); // High consistency = high strength
+  }
+
+  // Quality floor: minimum avgScore of liked blocks
+  if (liked.length > 0) {
+    weights.qualityFloor = Math.min(...liked.map(l => l.meta.avgScore));
+  }
+
+  return weights;
+}
+
+/**
+ * Get the fingerprint of a block (sorted song IDs joined by |)
+ */
+function getBlockFingerprint(block: Block): string {
+  return [...block.songs.map(s => s.id)].sort().join('|');
+}
+
+/**
+ * Apply preference weights to a block's selection score.
+ * Returns a bonus (positive or negative) to add to the base score.
+ */
+function preferenceBonus(
+  block: Block,
+  weights: PreferenceWeights,
+  directRatings: Map<string, BlockRating>
+): number {
+  // Direct rating: if the user has rated this exact block, use it directly
+  const fp = getBlockFingerprint(block);
+  const directRating = directRatings.get(fp);
+  if (directRating !== undefined) {
+    // 5-star = +40, 4-star = +20, 3-star = 0, 2-star = -20, 1-star = -40
+    return (directRating - 3) * 20;
+  }
+
+  // No direct rating — use learned pattern weights
+  if (weights.sampleCount < 3) return 0; // Not enough data to learn from
+
+  let bonus = 0;
+
+  // Mashup affinity (max ±12)
+  if (block.hasMashup) {
+    bonus += weights.mashupAffinity * 12;
+  }
+
+  // Crowd affinity (max ±10)
+  if (block.hasCrowdMoment) {
+    bonus += weights.crowdAffinity * 10;
+  }
+
+  // Energy preference (max ±8)
+  if (weights.energyStrength > 0.3) {
+    const energyDist = Math.abs(block.avgEnergy - weights.energyPreference);
+    bonus += (1 - energyDist) * weights.energyStrength * 8;
+  }
+
+  return bonus;
+}
 
 // ── Block selection per decade ────────────────────────────────────────────
 
@@ -92,11 +220,14 @@ interface ScoredBlock {
  * - Variety of tempos (BPM range coverage)
  * - Starred songs are prioritized
  * - No song appears in more than one selected block
+ * - User preferences are factored in (direct ratings + learned patterns)
  */
 function selectBlocksForDecade(
   decadeBlocks: DecadeBlocks,
   targetCount: number,
-  starredIds: Set<string>
+  starredIds: Set<string>,
+  prefWeights: PreferenceWeights,
+  directRatings: Map<string, BlockRating>
 ): Block[] {
   const { blocks } = decadeBlocks;
   if (blocks.length === 0) return [];
@@ -118,6 +249,9 @@ function selectBlocksForDecade(
 
     // Slight bonus for higher energy blocks (crowd-pleasers)
     selectionScore += block.avgEnergy * 3;
+
+    // Preference learning bonus
+    selectionScore += preferenceBonus(block, prefWeights, directRatings);
 
     return { block, selectionScore };
   });
@@ -451,16 +585,22 @@ export function assembleBlocks(
 ): AssembledMedley {
   const cfg: AssemblyConfig = { ...DEFAULT_CONFIG, ...config };
 
+  // Learn preference weights from rating history
+  const prefWeights = learnPreferenceWeights(cfg.blockPreferences);
+
   // Stage 1: Select blocks per decade
   if (onProgress) {
-    onProgress({ stage: 'selecting', percent: 0, message: 'Selecting best blocks per decade...' });
+    const prefMsg = prefWeights.sampleCount >= 3
+      ? ` (using ${prefWeights.sampleCount} ratings for preference learning)`
+      : '';
+    onProgress({ stage: 'selecting', percent: 0, message: `Selecting best blocks per decade...${prefMsg}` });
   }
 
   const selectedByDecade = new Map<string, Block[]>();
 
   for (const decadeBlock of discoveryResult.decadeBlocks) {
     const targetCount = cfg.blocksPerDecade[decadeBlock.decade] || 2;
-    const selected = selectBlocksForDecade(decadeBlock, targetCount, cfg.starredIds);
+    const selected = selectBlocksForDecade(decadeBlock, targetCount, cfg.starredIds, prefWeights, cfg.blockRatings);
     selectedByDecade.set(decadeBlock.decade, selected);
   }
 

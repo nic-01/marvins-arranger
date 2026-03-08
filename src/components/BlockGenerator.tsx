@@ -21,6 +21,7 @@ interface BlockGeneratorProps {
   onAcceptArrangement?: (songs: Song[]) => void;
   onRateBlock?: (log: BlockPreferenceLog) => void;
   blockRatings?: Map<string, BlockRating>;
+  blockPrefLog?: BlockPreferenceLog[];
 }
 
 const QUALITY_COLORS: Record<TransitionQuality, string> = {
@@ -75,7 +76,7 @@ function buildBlockPreferenceLog(block: Block, rating: BlockRating): BlockPrefer
   };
 }
 
-export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings }: BlockGeneratorProps) {
+export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings, blockPrefLog = [] }: BlockGeneratorProps) {
   const [discoveryResult, setDiscoveryResult] = useState<BlockDiscoveryResult | null>(null);
   const [assembly, setAssembly] = useState<AssembledMedley | null>(null);
   const [progressMsg, setProgressMsg] = useState<string>('');
@@ -118,6 +119,8 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
     setTimeout(() => {
       const result = assembleBlocks(discoveryResult, {
         starredIds,
+        blockPreferences: blockPrefLog,
+        blockRatings: blockRatings || new Map(),
       }, (p: AssemblyProgress) => {
         setProgressMsg(p.message);
       });
@@ -176,9 +179,19 @@ export default function BlockGenerator({ catalog, starredIds, deletedIds, onAcce
         </div>
       </div>
 
+      {/* Preference learning indicator */}
+      {blockPrefLog.length >= 3 && !running && (
+        <div style={styles.prefBanner}>
+          Preference learning active: {blockPrefLog.length} block ratings informing selection
+        </div>
+      )}
+
       {/* Progress */}
       {running && progressMsg && (
         <div style={styles.progressBanner}>
+          <div style={styles.progressBarOuter}>
+            <div style={{ ...styles.progressBarInner, width: running ? '60%' : '0%' }} />
+          </div>
           {progressMsg}
         </div>
       )}
@@ -519,11 +532,33 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#000',
     cursor: 'pointer',
   },
+  prefBanner: {
+    padding: '4px 24px',
+    fontSize: 11,
+    color: '#ffd700',
+    background: 'rgba(255, 215, 0, 0.08)',
+    margin: '0 24px 4px',
+    borderRadius: 4,
+    fontWeight: 600,
+  },
   progressBanner: {
     padding: '6px 24px',
     fontSize: 12,
     color: 'var(--accent)',
     fontWeight: 600,
+  },
+  progressBarOuter: {
+    height: 3,
+    background: 'var(--bg-tertiary)',
+    borderRadius: 2,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  progressBarInner: {
+    height: '100%',
+    background: 'var(--accent)',
+    borderRadius: 2,
+    transition: 'width 0.3s ease',
   },
   statsBanner: {
     display: 'flex',
