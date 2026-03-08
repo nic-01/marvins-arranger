@@ -66,12 +66,17 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
   }, [songs]);
 
   const [showDeleted, setShowDeleted] = useState(false);
+  const [showInMedleyOnly, setShowInMedleyOnly] = useState(false);
 
   const filtered = useMemo(() => {
     let result = songs;
     // Hide deleted songs by default when preferences are enabled
     if (showPreferences && deletedIds && !showDeleted) {
       result = result.filter((s) => !deletedIds.has(s.id));
+    }
+    // Show only songs already added to medley
+    if (showInMedleyOnly) {
+      result = result.filter((s) => medleySongIds.has(s.id));
     }
     if (filters.decade !== 'All') {
       result = result.filter((s) => s.decade === filters.decade);
@@ -106,7 +111,7 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return result;
-  }, [songs, filters, sortField, sortDir]);
+  }, [songs, filters, sortField, sortDir, showInMedleyOnly, medleySongIds]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -212,14 +217,20 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
         </div>
       </div>
 
-      {showPreferences && deletedIds && deletedIds.size > 0 && (
-        <div style={{ padding: '4px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ padding: '4px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {medleySongIds.size > 0 && (
+          <label style={{ fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <input type="checkbox" checked={showInMedleyOnly} onChange={(e) => setShowInMedleyOnly(e.target.checked)} />
+            Show only in-medley ({medleySongIds.size})
+          </label>
+        )}
+        {showPreferences && deletedIds && deletedIds.size > 0 && (
           <label style={{ fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
             <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
             Show {deletedIds.size} deleted
           </label>
-        </div>
-      )}
+        )}
+      </div>
 
       <div style={styles.tableContainer}>
         <table style={styles.table}>
