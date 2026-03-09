@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef, useTransition } from 'react';
-import { UserButton } from '@clerk/nextjs';
 import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog, BlockRating } from '@/lib/types';
 import SongBrowser from '@/components/SongBrowser';
 import MedleyPlanner from '@/components/MedleyPlanner';
@@ -279,7 +278,6 @@ export default function AppShell({
               {medleySongs.length} songs &middot; {totalMin}:{totalSec.toString().padStart(2, '0')}
             </span>
           )}
-          <UserButton />
         </div>
       </div>
 

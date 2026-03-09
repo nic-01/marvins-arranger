@@ -1,28 +1,21 @@
 'use server';
 
-import { auth } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { medleySongs, songPreferences, songPreferenceLog, blockPreferenceLog, easterEggs } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog } from '@/lib/types';
 
-async function getUserId(): Promise<string> {
-  const { userId } = await auth();
-  if (!userId) throw new Error('Not authenticated');
-  return userId;
-}
+// Shared user — no auth needed
+const SHARED_USER_ID = 'shared';
 
 // ── Medley Songs ────────────────────────────────────────────────────────────
 
 export async function getMedleySongs(): Promise<MedleySong[]> {
-  const userId = await getUserId();
   const rows = await db.select().from(medleySongs)
-    .where(eq(medleySongs.userId, userId))
+    .where(eq(medleySongs.userId, SHARED_USER_ID))
     .orderBy(medleySongs.sortOrder);
 
   return rows.map(row => ({
-    // We'll need to join with catalog data client-side
-    // Store enough to reconstruct the MedleySong
     ...JSON.parse(row.arrangementNotes || '{}').catalogData,
     medleyId: row.medleyId,
     snippet_duration: row.snippetDuration,
@@ -52,9 +45,9 @@ export async function saveMedleySongs(songs: Array<{
   arrangementNotes?: string;
   sortOrder: number;
 }>): Promise<void> {
-  const userId = await getUserId();
+  const userId = SHARED_USER_ID;
 
-  // Delete all existing medley songs for this user and re-insert
+  // Delete all existing medley songs and re-insert
   await db.delete(medleySongs).where(eq(medleySongs.userId, userId));
 
   if (songs.length === 0) return;
@@ -81,7 +74,7 @@ export async function saveMedleySongs(songs: Array<{
 // ── Song Preferences ────────────────────────────────────────────────────────
 
 export async function getSongPreferences(): Promise<{ starred: string[]; deleted: string[] }> {
-  const userId = await getUserId();
+  const userId = SHARED_USER_ID;
   const rows = await db.select().from(songPreferences)
     .where(eq(songPreferences.userId, userId));
 
@@ -95,7 +88,7 @@ export async function getSongPreferences(): Promise<{ starred: string[]; deleted
 }
 
 export async function setSongPreference(songId: string, pref: SongPreference): Promise<void> {
-  const userId = await getUserId();
+  const userId = SHARED_USER_ID;
 
   // Upsert the preference
   const existing = await db.select().from(songPreferences)
@@ -127,7 +120,7 @@ export async function setSongPreference(songId: string, pref: SongPreference): P
 // ── Block Preferences ───────────────────────────────────────────────────────
 
 export async function getBlockPreferenceLog(): Promise<BlockPreferenceLog[]> {
-  const userId = await getUserId();
+  const userId = SHARED_USER_ID;
   const rows = await db.select().from(blockPreferenceLog)
     .where(eq(blockPreferenceLog.userId, userId));
 
@@ -142,7 +135,7 @@ export async function getBlockPreferenceLog(): Promise<BlockPreferenceLog[]> {
 }
 
 export async function addBlockRating(log: BlockPreferenceLog): Promise<void> {
-  const userId = await getUserId();
+  const userId = SHARED_USER_ID;
   await db.insert(blockPreferenceLog).values({
     userId,
     blockFingerprint: log.blockFingerprint,
@@ -157,7 +150,7 @@ export async function addBlockRating(log: BlockPreferenceLog): Promise<void> {
 // ── Easter Eggs ─────────────────────────────────────────────────────────────
 
 export async function getEasterEggs(): Promise<EasterEgg[]> {
-  const userId = await getUserId();
+  const userId = SHARED_USER_ID;
   const rows = await db.select().from(easterEggs)
     .where(eq(easterEggs.userId, userId));
 
@@ -172,9 +165,9 @@ export async function getEasterEggs(): Promise<EasterEgg[]> {
 }
 
 export async function saveEasterEggs(eggs: EasterEgg[]): Promise<void> {
-  const userId = await getUserId();
+  const userId = SHARED_USER_ID;
 
-  // Replace all eggs for this user
+  // Replace all eggs
   await db.delete(easterEggs).where(eq(easterEggs.userId, userId));
 
   if (eggs.length === 0) return;

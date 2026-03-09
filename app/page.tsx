@@ -1,5 +1,3 @@
-import { auth } from '@clerk/nextjs/server';
-import { SignInButton, UserButton } from '@clerk/nextjs';
 import { db } from '@/db';
 import { medleySongs, songPreferences, blockPreferenceLog, easterEggs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -8,46 +6,19 @@ import type { MedleySong, EasterEgg, BlockPreferenceLog as BPL } from '@/lib/typ
 import { DEFAULT_EGGS } from '@/components/EasterEggTracker';
 import AppShell from './app-shell';
 
+// Force dynamic rendering — DB may not exist at build time
+export const dynamic = 'force-dynamic';
+
+const SHARED_USER_ID = 'shared';
+
 export default async function Page() {
-  const { userId } = await auth();
-
-  if (!userId) {
-    return (
-      <div style={{
-        height: '100dvh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 24,
-      }}>
-        <h1 style={{
-          fontSize: 24,
-          fontWeight: 800,
-          background: 'linear-gradient(90deg, #ff6b6b, #ffa94d, #ffd43b, #69db7c, #3bc9db, #748ffc, #da77f2)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}>
-          The Hundred Years&apos; Medley
-        </h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Sign in to start arranging</p>
-        <SignInButton mode="modal">
-          <button className="primary" style={{ padding: '10px 24px', fontSize: 14 }}>
-            Sign In
-          </button>
-        </SignInButton>
-      </div>
-    );
-  }
-
-  // Load all user data from DB
   const songMap = new Map(allSongs.map(s => [s.id, s]));
 
   const [medleyRows, prefRows, blockLogRows, eggRows] = await Promise.all([
-    db.select().from(medleySongs).where(eq(medleySongs.userId, userId)).orderBy(medleySongs.sortOrder),
-    db.select().from(songPreferences).where(eq(songPreferences.userId, userId)),
-    db.select().from(blockPreferenceLog).where(eq(blockPreferenceLog.userId, userId)),
-    db.select().from(easterEggs).where(eq(easterEggs.userId, userId)),
+    db.select().from(medleySongs).where(eq(medleySongs.userId, SHARED_USER_ID)).orderBy(medleySongs.sortOrder),
+    db.select().from(songPreferences).where(eq(songPreferences.userId, SHARED_USER_ID)),
+    db.select().from(blockPreferenceLog).where(eq(blockPreferenceLog.userId, SHARED_USER_ID)),
+    db.select().from(easterEggs).where(eq(easterEggs.userId, SHARED_USER_ID)),
   ]);
 
   // Reconstruct MedleySong objects by joining with catalog
