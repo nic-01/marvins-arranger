@@ -16,8 +16,8 @@ export interface Song {
   guitar_driven: boolean;
   danceability: 'Low' | 'Medium' | 'High';
   notes: string;
-  chords_verse: string;  // Roman numeral progression, e.g. "I-VI-IV-V"
-  chords_chorus: string; // Roman numeral progression, e.g. "I-V-VI-IV"
+  chords_verse?: string;  // Roman numeral progression, e.g. "I-VI-IV-V"
+  chords_chorus?: string; // Roman numeral progression, e.g. "I-V-VI-IV"
 }
 
 export interface MedleySong extends Song {

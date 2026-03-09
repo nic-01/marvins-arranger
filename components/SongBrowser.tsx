@@ -1,6 +1,8 @@
+'use client';
+
 import { useState, useMemo } from 'react';
-import type { Song, Filters, SongPreference } from '../types';
-import { getCamelotCode } from '../camelot';
+import type { Song, Filters, SongPreference } from '@/lib/types';
+import { getCamelotCode } from '@/lib/camelot';
 
 interface SongBrowserProps {
   songs: Song[];

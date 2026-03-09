@@ -260,8 +260,8 @@ function scoreMashupPotential(
 
   // Chord compatibility: similar progressions mashup much better
   const chordCompat = scoreChordCompatibility(
-    from.chords_verse, from.chords_chorus,
-    to.chords_verse, to.chords_chorus,
+    from.chords_verse || '', from.chords_chorus || '',
+    to.chords_verse || '', to.chords_chorus || '',
   );
   if (chordCompat.hasData) {
     score += Math.round(chordCompat.score * 0.15); // Up to +15 for identical chords

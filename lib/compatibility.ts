@@ -179,8 +179,8 @@ export function scoreTransition(a: Song, b: Song): CompatibilityScore {
 
   // Chords: -15 to 0 (compatible progressions are a bonus, reduces total)
   const chordCompat = scoreChordCompatibility(
-    a.chords_verse, a.chords_chorus,
-    b.chords_verse, b.chords_chorus,
+    a.chords_verse || '', a.chords_chorus || '',
+    b.chords_verse || '', b.chords_chorus || '',
   );
   // Scale 0-100 chord score to -15..0 bonus (only applies when both songs have data)
   const chordScore = chordCompat.hasData ? -(chordCompat.score / 100) * 15 : 0;
