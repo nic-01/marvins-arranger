@@ -248,7 +248,7 @@ export default function AppShell({
       <div style={styles.headerBar}>
         <div style={styles.headerLeft}>
           <h1 style={styles.logo}>The Hundred Years&apos; Medley</h1>
-          <span style={styles.subtitle}>Marvin&apos;s Arranger</span>
+          <span style={styles.subtitle}>A Century of Medley: A Story of Rock &amp; Roll for Generations to Come</span>
         </div>
 
         <div style={styles.headerTabs}>
