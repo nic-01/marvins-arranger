@@ -1,4 +1,4 @@
-import { db } from '@/db';
+import { getDb } from '@/db';
 import { medleySongs, songPreferences, blockPreferenceLog, easterEggs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { allSongs } from '@/lib/data';
@@ -11,8 +11,9 @@ export const dynamic = 'force-dynamic';
 
 const SHARED_USER_ID = 'shared';
 
-export default async function Page() {
-  const songMap = new Map(allSongs.map(s => [s.id, s]));
+async function loadDbData() {
+  const db = getDb();
+  if (!db) return null;
 
   const [medleyRows, prefRows, blockLogRows, eggRows] = await Promise.all([
     db.select().from(medleySongs).where(eq(medleySongs.userId, SHARED_USER_ID)).orderBy(medleySongs.sortOrder),
@@ -20,6 +21,8 @@ export default async function Page() {
     db.select().from(blockPreferenceLog).where(eq(blockPreferenceLog.userId, SHARED_USER_ID)),
     db.select().from(easterEggs).where(eq(easterEggs.userId, SHARED_USER_ID)),
   ]);
+
+  const songMap = new Map(allSongs.map(s => [s.id, s]));
 
   // Reconstruct MedleySong objects by joining with catalog
   const initialMedleySongs: MedleySong[] = [];
@@ -41,11 +44,9 @@ export default async function Page() {
     });
   }
 
-  // Reconstruct preferences
   const initialStarred = prefRows.filter(r => r.preference === 'starred').map(r => r.songId);
   const initialDeleted = prefRows.filter(r => r.preference === 'deleted').map(r => r.songId);
 
-  // Reconstruct block pref log
   const initialBlockPrefLog: BPL[] = blockLogRows.map(row => ({
     blockFingerprint: row.blockFingerprint,
     songIds: JSON.parse(row.songIds),
@@ -55,7 +56,6 @@ export default async function Page() {
     meta: JSON.parse(row.meta),
   }));
 
-  // Reconstruct easter eggs
   const initialEggs: EasterEgg[] = eggRows.length > 0
     ? eggRows.map(row => ({
         id: row.eggId,
@@ -67,13 +67,24 @@ export default async function Page() {
       }))
     : DEFAULT_EGGS.map((egg) => ({ ...egg, id: Math.random().toString(36).substring(2, 10) }));
 
+  return { initialMedleySongs, initialStarred, initialDeleted, initialBlockPrefLog, initialEggs };
+}
+
+export default async function Page() {
+  let data: Awaited<ReturnType<typeof loadDbData>> = null;
+  try {
+    data = await loadDbData();
+  } catch (e) {
+    console.error('[page] Failed to load DB data, rendering with empty state:', e);
+  }
+
   return (
     <AppShell
-      initialMedleySongs={initialMedleySongs}
-      initialStarred={initialStarred}
-      initialDeleted={initialDeleted}
-      initialBlockPrefLog={initialBlockPrefLog}
-      initialEggs={initialEggs}
+      initialMedleySongs={data?.initialMedleySongs ?? []}
+      initialStarred={data?.initialStarred ?? []}
+      initialDeleted={data?.initialDeleted ?? []}
+      initialBlockPrefLog={data?.initialBlockPrefLog ?? []}
+      initialEggs={data?.initialEggs ?? DEFAULT_EGGS.map((egg) => ({ ...egg, id: Math.random().toString(36).substring(2, 10) }))}
     />
   );
 }
