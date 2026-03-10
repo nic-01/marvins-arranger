@@ -1,4 +1,4 @@
-import { db } from '@/db';
+import { db, migrate } from '@/db';
 import { medleySongs, songPreferences, blockPreferenceLog, easterEggs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { allSongs } from '@/lib/data';
@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 const SHARED_USER_ID = 'shared';
 
 export default async function Page() {
+  await migrate; // ensure tables exist before querying
   const songMap = new Map(allSongs.map(s => [s.id, s]));
 
   const [medleyRows, prefRows, blockLogRows, eggRows] = await Promise.all([
