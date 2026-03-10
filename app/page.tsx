@@ -3,7 +3,7 @@ import { medleySongs, songPreferences, blockPreferenceLog, easterEggs } from '@/
 import { eq } from 'drizzle-orm';
 import { allSongs } from '@/lib/data';
 import type { MedleySong, EasterEgg, BlockPreferenceLog as BPL } from '@/lib/types';
-import { DEFAULT_EGGS } from '@/components/EasterEggTracker';
+import { DEFAULT_EGGS } from '@/lib/default-eggs';
 import AppShell from './app-shell';
 
 // Force dynamic rendering — DB may not exist at build time
