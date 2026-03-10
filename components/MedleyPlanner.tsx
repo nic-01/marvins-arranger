@@ -149,7 +149,7 @@ export default function MedleyPlanner({ songs, catalog, onRemoveSong, onUpdateSo
             <div style={styles.genHint}>
               {hasApiKey()
                 ? 'Claude will evaluate paths, suggest mashups, and write arrangement notes.'
-                : 'Set VITE_ANTHROPIC_API_KEY in .env to enable LLM-powered generation.'}
+                : 'Set ANTHROPIC_API_KEY in .env to enable LLM-powered generation.'}
             </div>
           )}
 

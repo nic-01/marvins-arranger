@@ -12,10 +12,28 @@ import type { Song } from './types';
 
 // ── API Configuration ───────────────────────────────────────────────────────
 
-const apiKey = process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || '';
+// Cache the hasApiKey check so we don't re-fetch every time
+let _hasApiKey: boolean | null = null;
 
 export function hasApiKey(): boolean {
-  return apiKey.length > 0;
+  // Optimistically return true on first call; the actual check happens async
+  // This allows the UI to attempt LLM scoring, which will fail gracefully if no key
+  if (_hasApiKey === null) {
+    // Fire off async check
+    checkApiKey();
+    return true; // optimistic — scoring will gracefully degrade if no key
+  }
+  return _hasApiKey;
+}
+
+async function checkApiKey(): Promise<void> {
+  try {
+    const resp = await fetch('/api/llm');
+    const data = await resp.json();
+    _hasApiKey = data.hasKey === true;
+  } catch {
+    _hasApiKey = false;
+  }
 }
 
 interface Message {
@@ -28,16 +46,9 @@ async function callClaude(
   systemPrompt: string,
   maxTokens: number = 16000
 ): Promise<string> {
-  if (!apiKey) throw new Error('No API key set. Set VITE_ANTHROPIC_API_KEY in .env.');
-
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  const resp = await fetch('/api/llm', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2025-04-14',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'claude-opus-4-6',
       max_tokens: maxTokens,
@@ -51,8 +62,8 @@ async function callClaude(
   });
 
   if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`Claude API error ${resp.status}: ${err}`);
+    const data = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }));
+    throw new Error(data.error || `Claude API error ${resp.status}`);
   }
 
   const data = await resp.json();
