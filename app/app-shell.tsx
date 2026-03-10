@@ -5,7 +5,8 @@ import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, Bl
 import SongBrowser from '@/components/SongBrowser';
 import MedleyPlanner from '@/components/MedleyPlanner';
 import BlockGenerator from '@/components/BlockGenerator';
-import EasterEggTracker, { DEFAULT_EGGS } from '@/components/EasterEggTracker';
+import EasterEggTracker from '@/components/EasterEggTracker';
+import { DEFAULT_EGGS } from '@/lib/default-eggs';
 import ArrangementView from '@/components/ArrangementView';
 import ExportPanel from '@/components/ExportPanel';
 import { allSongs } from '@/lib/data';
