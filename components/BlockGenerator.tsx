@@ -96,6 +96,8 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
   const [viewMode, setViewMode] = useState<'pairs' | 'discovery' | 'assembly'>('pairs');
   const [pairDecadeFilter, setPairDecadeFilter] = useState<string>('all');
   const [pairSortBy, setPairSortBy] = useState<'composite' | 'algo' | 'llm'>('composite');
+  const [llmScoring, setLlmScoring] = useState(false);
+  const [llmProgress, setLlmProgress] = useState('');
 
   // When the user has added songs to the medley, only use those; otherwise use full catalog
   const effectiveCatalog = useMemo(() => {
@@ -180,6 +182,83 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
   const handleAccept = () => {
     if (!onAcceptArrangement || !assembly) return;
     onAcceptArrangement(assembly.path);
+  };
+
+  const handleLlmScore = async () => {
+    if (!pairResult) return;
+    setLlmScoring(true);
+    setLlmProgress('Preparing pairs for LLM scoring...');
+
+    try {
+      // Score top 60 pairs per decade (matching existing config)
+      const BATCH_SIZE = 40;
+      const TOP_PER_DECADE = 60;
+
+      // Gather top pairs per decade
+      const pairsToScore: typeof pairResult.pairs = [];
+      for (const [, decadePairs] of pairResult.byDecade) {
+        pairsToScore.push(...decadePairs.slice(0, TOP_PER_DECADE));
+      }
+
+      // Process in batches
+      const totalBatches = Math.ceil(pairsToScore.length / BATCH_SIZE);
+      let scored = 0;
+
+      for (let bi = 0; bi < totalBatches; bi++) {
+        const batch = pairsToScore.slice(bi * BATCH_SIZE, (bi + 1) * BATCH_SIZE);
+        setLlmProgress(`Scoring batch ${bi + 1}/${totalBatches} (${batch.length} pairs)...`);
+
+        const payload = batch.map(p => ({
+          songA: { title: p.songA.title, artist: p.songA.artist, year: p.songA.year, bpm: p.songA.bpm, key: p.songA.key, genre: p.songA.genre, energy: p.songA.energy },
+          songB: { title: p.songB.title, artist: p.songB.artist, year: p.songB.year, bpm: p.songB.bpm, key: p.songB.key, genre: p.songB.genre, energy: p.songB.energy },
+          algoScore: p.algoScore,
+          mashupPotential: Math.max(p.pairScoreAB.mashupPotential, p.pairScoreBA.mashupPotential),
+          quality: p.pairScoreAB.quality === 'mashup' || p.pairScoreBA.quality === 'mashup' ? 'mashup' : p.pairScoreAB.quality,
+        }));
+
+        const resp = await fetch('/api/llm-score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pairs: payload }),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          console.warn(`LLM batch ${bi + 1} failed:`, err);
+          continue;
+        }
+
+        const { scores } = await resp.json();
+
+        // Match scores back to pairs
+        for (const llmScore of scores) {
+          const pair = batch.find(p =>
+            (p.songA.title === llmScore.songATitle && p.songB.title === llmScore.songBTitle) ||
+            (p.songA.title === llmScore.songBTitle && p.songB.title === llmScore.songATitle)
+          );
+          if (pair) {
+            pair.llmScore = llmScore;
+            const llmNormalized = ((llmScore.narrative + llmScore.transition + llmScore.mashup) / 3) * 10;
+            pair.compositeScore = Math.round(pair.algoScore * 0.4 + llmNormalized * 0.6);
+            scored++;
+          }
+        }
+      }
+
+      // Update the result to trigger re-render
+      setPairResult({
+        ...pairResult,
+        pairs: [...pairResult.pairs],
+        stats: { ...pairResult.stats, llmScored: scored },
+      });
+      setLlmProgress(`Done! Scored ${scored} pairs with Claude Opus 4.6`);
+      setTimeout(() => setLlmProgress(''), 3000);
+    } catch (err) {
+      console.error('LLM scoring failed:', err);
+      setLlmProgress(`Error: ${err}`);
+    } finally {
+      setLlmScoring(false);
+    }
   };
 
   const displayBlocks = viewMode === 'assembly' && assembly
@@ -390,7 +469,23 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
             <span style={styles.stat}>
               Showing <strong>{displayPairs.length}</strong> pairs
             </span>
+            <button
+              onClick={handleLlmScore}
+              disabled={llmScoring || !pairResult}
+              style={{
+                ...styles.primaryBtn,
+                background: llmScoring ? 'var(--bg-tertiary)' : '#42a5f5',
+                marginLeft: 'auto',
+              }}
+            >
+              {llmScoring ? 'Scoring...' : `Score with LLM (Opus 4.6)`}
+            </button>
           </div>
+          {(llmScoring || llmProgress) && (
+            <div style={{ padding: '6px 0', fontSize: 12, color: '#42a5f5', fontWeight: 600 }}>
+              {llmProgress}
+            </div>
+          )}
 
           {/* Pair cards */}
           {displayPairs.map((pair) => (
