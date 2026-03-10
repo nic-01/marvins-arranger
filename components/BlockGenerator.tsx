@@ -223,15 +223,18 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
         });
 
         if (!resp.ok) {
-          const err = await resp.json();
+          const err = await resp.json().catch(() => ({ error: resp.statusText }));
+          const msg = err.error || JSON.stringify(err);
+          setLlmProgress(`Batch ${bi + 1} failed: ${msg}`);
           console.warn(`LLM batch ${bi + 1} failed:`, err);
           continue;
         }
 
         const { scores } = await resp.json();
+        setLlmProgress(`Batch ${bi + 1}/${totalBatches}: got ${scores?.length || 0} scores, matching...`);
 
         // Match scores back to pairs
-        for (const llmScore of scores) {
+        for (const llmScore of (scores || [])) {
           const pair = batch.find(p =>
             (p.songA.title === llmScore.songATitle && p.songB.title === llmScore.songBTitle) ||
             (p.songA.title === llmScore.songBTitle && p.songB.title === llmScore.songATitle)
