@@ -43,6 +43,7 @@ export interface PairDiscoveryResult {
     pairsPerDecade: Record<string, number>;
     avgAlgoScore: number;
     llmScored: number;
+    llmErrors: string[];
   };
 }
 
@@ -66,7 +67,7 @@ const DEFAULT_CONFIG: PairDiscoveryConfig = {
   algoScoreFloor: 40,
   maxPairsPerDecade: 300,
   topPairsForLLM: 60,
-  llmBatchSize: 40,
+  llmBatchSize: 15,
 };
 
 const DECADE_ORDER = [
@@ -157,12 +158,16 @@ async function scorePairsLLM(
   pairs: CandidatePair[],
   config: PairDiscoveryConfig,
   onProgress?: (message: string) => void
-): Promise<void> {
-  if (!hasApiKey()) return;
+): Promise<string[]> {
+  const errors: string[] = [];
+  if (!hasApiKey()) {
+    errors.push('No API key available');
+    return errors;
+  }
 
   // Take top N pairs for LLM scoring
   const topPairs = pairs.slice(0, config.topPairsForLLM);
-  if (topPairs.length === 0) return;
+  if (topPairs.length === 0) return errors;
 
   // Batch into groups
   const batches: CandidatePair[][] = [];
@@ -194,11 +199,16 @@ async function scorePairsLLM(
           );
         }
       }
+      onProgress?.(`Batch ${bi + 1}/${batches.length} scored ${llmScores.length} pairs`);
     } catch (err) {
-      console.warn(`LLM pair scoring batch ${bi + 1} failed:`, err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`LLM pair scoring batch ${bi + 1} failed:`, msg);
+      onProgress?.(`Batch ${bi + 1} failed: ${msg}`);
+      errors.push(`Batch ${bi + 1}: ${msg}`);
       // Pairs keep their algo-only composite scores
     }
   }
+  return errors;
 }
 
 // ── Main Entry Point ──────────────────────────────────────────────────────
@@ -258,6 +268,7 @@ export async function discoverPairs(
   }
 
   // LLM scoring — await the key check so we don't race past it
+  const llmErrors: string[] = [];
   const apiKeyReady = !skipLLM && allPairs.length > 0 && await ensureApiKeyChecked();
   if (apiKeyReady) {
     onProgress?.({
@@ -280,7 +291,7 @@ export async function discoverPairs(
         decade,
       });
 
-      await scorePairsLLM(decadePairs, cfg, (msg) => {
+      const errs = await scorePairsLLM(decadePairs, cfg, (msg) => {
         onProgress?.({
           stage: 'scoring_llm',
           percent: pct,
@@ -288,6 +299,7 @@ export async function discoverPairs(
           decade,
         });
       });
+      llmErrors.push(...errs);
     }
 
     // Re-sort all pairs by composite score
@@ -298,10 +310,15 @@ export async function discoverPairs(
     ? Math.round(allPairs.reduce((sum, p) => sum + p.algoScore, 0) / allPairs.length)
     : 0;
 
+  const llmScored = allPairs.filter(p => p.llmScore !== null).length;
   onProgress?.({
     stage: 'complete',
     percent: 100,
-    message: `Found ${allPairs.length} candidate pairs across ${decades.length} decades`,
+    message: llmScored > 0
+      ? `Found ${allPairs.length} pairs, ${llmScored} LLM-scored`
+      : apiKeyReady
+        ? `Found ${allPairs.length} pairs (LLM scoring failed: ${llmErrors[0] || 'unknown'})`
+        : `Found ${allPairs.length} pairs (LLM disabled — no API key)`,
   });
 
   return {
@@ -311,7 +328,8 @@ export async function discoverPairs(
       totalPairs: allPairs.length,
       pairsPerDecade,
       avgAlgoScore,
-      llmScored: allPairs.filter(p => p.llmScore !== null).length,
+      llmScored,
+      llmErrors,
     },
   };
 }

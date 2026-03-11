@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const apiKey = process.env.ANTHROPIC_API_KEY || '';
 
+// Allow up to 60s for LLM calls (Vercel Pro limit)
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   if (!apiKey) {
     return NextResponse.json({ error: 'No API key configured' }, { status: 500 });
@@ -18,7 +21,7 @@ export async function POST(req: NextRequest) {
         'anthropic-version': '2025-04-14',
       },
       body: JSON.stringify({
-        model: body.model || 'claude-opus-4-6',
+        model: body.model || 'claude-sonnet-4-6',
         max_tokens: body.max_tokens || 16000,
         thinking: body.thinking,
         system: body.system,
