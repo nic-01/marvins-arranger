@@ -249,7 +249,7 @@ function App() {
         <div style={styles.headerLeft}>
           <h1 style={styles.logo}>The Hundred Years' Medley</h1>
           <span style={styles.subtitle}>Marvin's Arranger</span>
-          <span style={styles.buildVersion}>v1.03</span>
+          <span style={styles.buildVersion}>v1.04</span>
         </div>
 
         <div style={styles.headerTabs}>
