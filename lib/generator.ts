@@ -21,6 +21,7 @@ import {
 } from './path-finder';
 import {
   hasApiKey,
+  ensureApiKeyChecked,
   evaluatePaths,
   discoverMashups,
   generateArrangementNotes,
@@ -110,7 +111,7 @@ export async function generateMedley(
   let bestPath = refinedPaths[0];
   let narrative: string | undefined;
   let llmMashups: LLMMashupSuggestion[] | undefined;
-  const llmUsed = hasApiKey();
+  const llmUsed = await ensureApiKeyChecked();
 
   if (llmUsed) {
     try {
@@ -314,7 +315,7 @@ export async function generateMedleyViaBlocks(
   progress('block_discovery', `Found ${discoveryResult.stats.totalBlocks} blocks`, 30);
 
   // ── Stage 3: LLM block evaluation (30-50%) ──
-  const llmUsed = hasApiKey();
+  const llmUsed = await ensureApiKeyChecked();
   let narrative: string | undefined;
   let llmMashups: LLMMashupSuggestion[] | undefined;
 

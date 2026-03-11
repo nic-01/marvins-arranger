@@ -14,16 +14,28 @@ import type { Song } from './types';
 
 // Cache the hasApiKey check so we don't re-fetch every time
 let _hasApiKey: boolean | null = null;
+let _checkPromise: Promise<void> | null = null;
 
 export function hasApiKey(): boolean {
-  // Optimistically return true on first call; the actual check happens async
-  // This allows the UI to attempt LLM scoring, which will fail gracefully if no key
   if (_hasApiKey === null) {
-    // Fire off async check
-    checkApiKey();
-    return true; // optimistic — scoring will gracefully degrade if no key
+    // Fire off async check for later, but return false until confirmed
+    ensureApiKeyChecked();
+    return false;
   }
   return _hasApiKey;
+}
+
+/**
+ * Await this before gating on hasApiKey() to avoid race conditions.
+ * Safe to call multiple times — deduplicates the fetch.
+ */
+export async function ensureApiKeyChecked(): Promise<boolean> {
+  if (_hasApiKey !== null) return _hasApiKey;
+  if (!_checkPromise) {
+    _checkPromise = checkApiKey();
+  }
+  await _checkPromise;
+  return _hasApiKey!;
 }
 
 async function checkApiKey(): Promise<void> {
