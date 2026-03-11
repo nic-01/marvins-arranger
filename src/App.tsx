@@ -249,6 +249,7 @@ function App() {
         <div style={styles.headerLeft}>
           <h1 style={styles.logo}>The Hundred Years' Medley</h1>
           <span style={styles.subtitle}>Marvin's Arranger</span>
+          <span style={styles.buildVersion}>v1.02</span>
         </div>
 
         <div style={styles.headerTabs}>
@@ -396,6 +397,12 @@ const styles: Record<string, React.CSSProperties> = {
   subtitle: {
     fontSize: 11,
     color: 'var(--text-muted)',
+  },
+  buildVersion: {
+    fontSize: 10,
+    color: 'var(--text-muted)',
+    opacity: 0.5,
+    marginLeft: 8,
   },
   headerTabs: {
     display: 'flex',
