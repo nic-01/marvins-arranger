@@ -58,6 +58,18 @@ export const blockPreferenceLog = sqliteTable('block_preference_log', {
   meta: text('meta').notNull(), // JSON object with avgScore, avgEnergy, etc.
 });
 
+// ── Workspace State ─────────────────────────────────────────────────────────
+// Persists computed results (pair discovery, block discovery, assembly) as JSON
+// so they survive page reloads and work across devices
+
+export const workspaceState = sqliteTable('workspace_state', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull(),
+  stateKey: text('state_key').notNull(),    // 'pairResult' | 'discoveryResult' | 'assembly' | 'viewMode'
+  value: text('value').notNull(),           // JSON blob
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+});
+
 // ── Easter Eggs ─────────────────────────────────────────────────────────────
 
 export const easterEggs = sqliteTable('easter_eggs', {

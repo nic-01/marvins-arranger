@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { medleySongs, songPreferences, songPreferenceLog, blockPreferenceLog, easterEggs } from '@/db/schema';
+import { medleySongs, songPreferences, songPreferenceLog, blockPreferenceLog, easterEggs, workspaceState } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog } from '@/lib/types';
 
@@ -183,4 +183,41 @@ export async function saveEasterEggs(eggs: EasterEgg[]): Promise<void> {
       notes: egg.notes,
     }))
   );
+}
+
+// ── Workspace State ────────────────────────────────────────────────────────
+// Persist computed results (pair discovery, block discovery, assembly) as JSON
+
+export async function getWorkspaceState(): Promise<Record<string, string>> {
+  const userId = SHARED_USER_ID;
+  const rows = await db.select().from(workspaceState)
+    .where(eq(workspaceState.userId, userId));
+
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    result[row.stateKey] = row.value;
+  }
+  return result;
+}
+
+export async function saveWorkspaceState(key: string, value: string): Promise<void> {
+  const userId = SHARED_USER_ID;
+
+  const existing = await db.select().from(workspaceState)
+    .where(and(eq(workspaceState.userId, userId), eq(workspaceState.stateKey, key)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db.update(workspaceState)
+      .set({ value, updatedAt: new Date() })
+      .where(and(eq(workspaceState.userId, userId), eq(workspaceState.stateKey, key)));
+  } else {
+    await db.insert(workspaceState).values({ userId, stateKey: key, value });
+  }
+}
+
+export async function clearWorkspaceState(key: string): Promise<void> {
+  const userId = SHARED_USER_ID;
+  await db.delete(workspaceState)
+    .where(and(eq(workspaceState.userId, userId), eq(workspaceState.stateKey, key)));
 }

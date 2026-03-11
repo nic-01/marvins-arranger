@@ -15,6 +15,8 @@ import {
   setSongPreference,
   addBlockRating,
   saveEasterEggs,
+  saveWorkspaceState,
+  clearWorkspaceState,
 } from './actions';
 
 type Stage = 'songs' | 'blocks' | 'arrange' | 'export';
@@ -29,6 +31,7 @@ interface AppShellProps {
   initialDeleted: string[];
   initialBlockPrefLog: BlockPreferenceLog[];
   initialEggs: EasterEgg[];
+  initialWorkspaceState: Record<string, string>;
 }
 
 export default function AppShell({
@@ -37,6 +40,7 @@ export default function AppShell({
   initialDeleted,
   initialBlockPrefLog,
   initialEggs,
+  initialWorkspaceState,
 }: AppShellProps) {
   const [stage, setStage] = useState<Stage>('songs');
   const [isPending, startTransition] = useTransition();
@@ -215,6 +219,18 @@ export default function AppShell({
     );
   }, []);
 
+  const handleSaveWorkspaceState = useCallback((key: string, value: string) => {
+    startTransition(async () => {
+      await saveWorkspaceState(key, value);
+    });
+  }, []);
+
+  const handleClearWorkspaceState = useCallback((key: string) => {
+    startTransition(async () => {
+      await clearWorkspaceState(key);
+    });
+  }, []);
+
   const handleAcceptBlockArrangement = useCallback((songs: Song[]) => {
     const medley = songs.map(s => ({
       ...s,
@@ -283,9 +299,9 @@ export default function AppShell({
         </div>
       </div>
 
-      {/* Full-screen stage content */}
+      {/* Full-screen stage content — all stages stay mounted to preserve state */}
       <div style={styles.stageContent}>
-        {stage === 'songs' && (
+        <div style={stage === 'songs' ? styles.stageVisible : styles.stageHidden}>
           <SongBrowser
             songs={allSongs}
             onAddToMedley={handleAddToMedley}
@@ -298,9 +314,9 @@ export default function AppShell({
             onPreferenceChange={handlePreferenceChange}
             showPreferences
           />
-        )}
+        </div>
 
-        {stage === 'blocks' && (
+        <div style={stage === 'blocks' ? styles.stageVisible : styles.stageHidden}>
           <BlockGenerator
             catalog={allSongs}
             medleySongIds={medleySongIds}
@@ -310,10 +326,13 @@ export default function AppShell({
             onRateBlock={handleRateBlock}
             blockRatings={blockRatings}
             blockPrefLog={blockPrefLog}
+            initialWorkspaceState={initialWorkspaceState}
+            onSaveWorkspaceState={handleSaveWorkspaceState}
+            onClearWorkspaceState={handleClearWorkspaceState}
           />
-        )}
+        </div>
 
-        {stage === 'arrange' && (
+        <div style={stage === 'arrange' ? styles.stageVisible : styles.stageHidden}>
           <div style={styles.arrangeLayout}>
             <div style={styles.arrangeMain}>
               <MedleyPlanner
@@ -332,9 +351,9 @@ export default function AppShell({
               />
             </div>
           </div>
-        )}
+        </div>
 
-        {stage === 'export' && (
+        <div style={stage === 'export' ? styles.stageVisible : styles.stageHidden}>
           <div style={styles.exportLayout}>
             <div style={styles.exportMain}>
               <ExportPanel songs={medleySongs} eggs={easterEggs} />
@@ -348,7 +367,7 @@ export default function AppShell({
               />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -448,6 +467,16 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    position: 'relative',
+  },
+  stageVisible: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    flex: 1,
+    overflow: 'hidden',
+  },
+  stageHidden: {
+    display: 'none',
   },
   arrangeLayout: {
     display: 'flex',
