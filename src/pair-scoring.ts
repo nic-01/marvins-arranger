@@ -12,7 +12,7 @@
 
 import type { Song } from './types';
 import { scorePair, type PairScore } from './transition-scoring';
-import { hasApiKey, scorePairBatchLLM, type LLMPairScore } from './llm';
+import { hasApiKey, ensureApiKeyChecked, scorePairBatchLLM, type LLMPairScore } from './llm';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -258,7 +258,8 @@ export async function discoverPairs(
   }
 
   // LLM scoring
-  if (!skipLLM && hasApiKey() && allPairs.length > 0) {
+  const apiKeyReady = !skipLLM && allPairs.length > 0 && await ensureApiKeyChecked();
+  if (apiKeyReady) {
     onProgress?.({
       stage: 'scoring_llm',
       percent: 45,

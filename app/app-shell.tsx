@@ -250,6 +250,7 @@ export default function AppShell({
         <div style={styles.headerLeft}>
           <h1 style={styles.logo}>The Hundred Years&apos; Medley</h1>
           <span style={styles.subtitle}>A Century of Medley: A Story of Rock &amp; Roll for Generations to Come</span>
+          <span style={styles.buildVersion}>v1.02</span>
         </div>
 
         <div style={styles.headerTabs}>
@@ -387,6 +388,12 @@ const styles: Record<string, React.CSSProperties> = {
   subtitle: {
     fontSize: 11,
     color: 'var(--text-muted)',
+  },
+  buildVersion: {
+    fontSize: 10,
+    color: 'var(--text-muted)',
+    opacity: 0.5,
+    marginLeft: 8,
   },
   headerTabs: {
     display: 'flex',

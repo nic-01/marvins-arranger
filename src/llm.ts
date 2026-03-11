@@ -18,6 +18,11 @@ export function hasApiKey(): boolean {
   return apiKey.length > 0;
 }
 
+/** Async variant for consistency with Next.js version. Resolves immediately here. */
+export async function ensureApiKeyChecked(): Promise<boolean> {
+  return apiKey.length > 0;
+}
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
