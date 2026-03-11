@@ -40,3 +40,4 @@ local.db-*
 
 # TypeScript
 next-env.d.ts
+*.tsbuildinfo
