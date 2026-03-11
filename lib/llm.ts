@@ -56,18 +56,15 @@ interface Message {
 async function callClaude(
   messages: Message[],
   systemPrompt: string,
-  maxTokens: number = 16000
+  maxTokens: number = 16000,
+  useThinking: boolean = false
 ): Promise<string> {
   const resp = await fetch('/api/llm', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-opus-4-6',
       max_tokens: maxTokens,
-      thinking: {
-        type: 'enabled',
-        budget_tokens: 10000,
-      },
+      ...(useThinking ? { thinking: { type: 'enabled', budget_tokens: 10000 } } : {}),
       system: systemPrompt,
       messages,
     }),

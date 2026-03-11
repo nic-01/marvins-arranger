@@ -325,6 +325,11 @@ export default function BlockGenerator({ catalog, medleySongIds, starredIds, del
               <strong>{pairResult.stats.llmScored}</strong> LLM scored
             </span>
           )}
+          {pairResult.stats.llmScored === 0 && pairResult.stats.llmErrors.length > 0 && (
+            <span style={{ ...styles.stat, color: '#ef5350' }}>
+              LLM failed: {pairResult.stats.llmErrors[0]}
+            </span>
+          )}
           {Object.entries(pairResult.stats.pairsPerDecade).map(([d, n]) => (
             <span key={d} style={styles.stat}>{d}: <strong>{n}</strong></span>
           ))}
