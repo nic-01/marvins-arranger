@@ -351,7 +351,7 @@ export default function AppShell({
         <div style={stage === 'songs' ? styles.stageVisible : styles.stageHidden}>
           <div style={styles.songsToolbar}>
             <SpotifyRefresh
-              totalSongs={staticSongs.length}
+              songs={staticSongs}
               overrideCount={songOverrides.length}
               onOverridesApplied={handleOverridesApplied}
             />

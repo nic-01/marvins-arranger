@@ -1,180 +1,149 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import type { SongOverride } from '@/lib/types';
+import type { Song, SongOverride } from '@/lib/types';
 
 interface SpotifyRefreshProps {
-  totalSongs: number;
+  songs: Song[];
   overrideCount: number;
   onOverridesApplied: (overrides: SongOverride[]) => void;
 }
 
-interface BatchResult {
+interface SingleResult {
   id: string;
-  spotifyId: string | null;
-  spotifyKey: string | null;
-  spotifyBpm: number | null;
-  keyChanged: boolean;
-  bpmChanged: boolean;
-  energy: number | null;
-  danceability: number | null;
-  valence: number | null;
-  acousticness: number | null;
-  instrumentalness: number | null;
-  liveness: number | null;
-  loudness: number | null;
-  speechiness: number | null;
-  timeSignature: number | null;
-  durationMs: number | null;
+  found: boolean;
+  spotifyId?: string;
+  spotifyKey?: string | null;
+  spotifyBpm?: number | null;
+  energy?: number | null;
+  danceability?: number | null;
+  valence?: number | null;
+  acousticness?: number | null;
+  instrumentalness?: number | null;
+  liveness?: number | null;
+  loudness?: number | null;
+  speechiness?: number | null;
+  timeSignature?: number | null;
+  durationMs?: number | null;
+  retryAfter?: number;
 }
 
-type RefreshState = 'idle' | 'fetching' | 'done' | 'error';
+type RefreshState = 'idle' | 'fetching' | 'done';
 
-const BATCH_SIZE = 25;
-const MAX_RETRIES = 4;
+const SAVE_EVERY = 20; // save to DB every N songs
 
-/** Fetch with retry — returns null if all retries fail (instead of throwing) */
-async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response | null> {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      const resp = await fetch(url);
-      if (resp.ok) return resp;
-      if (resp.status === 504 || resp.status === 502 || resp.status === 503 || resp.status === 429) {
-        // Transient — wait with exponential backoff and retry
-        const wait = resp.status === 429
-          ? parseInt(resp.headers.get('retry-after') || '5', 10) * 1000
-          : (attempt + 1) * 3000;
-        if (attempt < retries - 1) {
-          await new Promise(r => setTimeout(r, wait));
-          continue;
-        }
-      }
-    } catch {
-      // Network error (fetch itself failed) — retry
-      if (attempt < retries - 1) {
-        await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
-        continue;
-      }
-    }
-  }
-  return null; // All retries exhausted — skip this batch
-}
-
-function toOverride(r: BatchResult) {
-  return {
-    songId: r.id,
-    spotifyId: r.spotifyId,
-    key: r.spotifyKey,
-    bpm: r.spotifyBpm,
-    energy: r.energy,
-    danceability: r.danceability,
-    valence: r.valence,
-    acousticness: r.acousticness,
-    instrumentalness: r.instrumentalness,
-    liveness: r.liveness,
-    loudness: r.loudness,
-    speechiness: r.speechiness,
-    timeSignature: r.timeSignature,
-    durationMs: r.durationMs,
-  };
-}
-
-export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesApplied }: SpotifyRefreshProps) {
+export default function SpotifyRefresh({ songs, overrideCount, onOverridesApplied }: SpotifyRefreshProps) {
   const [state, setState] = useState<RefreshState>('idle');
   const [progress, setProgress] = useState(0);
   const [saved, setSaved] = useState(0);
   const [stats, setStats] = useState<{
     found: number;
     notFound: number;
-    keyChanges: number;
-    bpmChanges: number;
-    skippedBatches: number;
+    skipped: number;
   } | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const allOverridesRef = useRef<SongOverride[]>([]);
+  const pendingRef = useRef<SongOverride[]>([]);
+
+  const flushToDb = useCallback(async () => {
+    if (pendingRef.current.length === 0) return;
+    const batch = pendingRef.current;
+    pendingRef.current = [];
+    try {
+      const resp = await fetch('/api/spotify/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overrides: batch }),
+      });
+      if (resp.ok) {
+        allOverridesRef.current = [...allOverridesRef.current, ...batch];
+        setSaved(allOverridesRef.current.length);
+        onOverridesApplied(allOverridesRef.current);
+      }
+    } catch {
+      // Save failed — put them back for next flush
+      pendingRef.current = [...batch, ...pendingRef.current];
+    }
+  }, [onOverridesApplied]);
 
   const runRefresh = useCallback(async () => {
     setState('fetching');
     setProgress(0);
     setSaved(0);
     setStats(null);
-    setError(null);
     allOverridesRef.current = [];
+    pendingRef.current = [];
 
-    let offset = 0;
-    let totalFound = 0;
-    let totalNotFound = 0;
-    let totalKeyChanges = 0;
-    let totalBpmChanges = 0;
-    let skippedBatches = 0;
-    let total = totalSongs;
+    let found = 0;
+    let notFound = 0;
+    let skipped = 0;
 
-    // Never-throw loop: skip failed batches, keep going
-    while (offset < total) {
+    for (let i = 0; i < songs.length; i++) {
+      const song = songs[i];
+
       try {
-        const resp = await fetchWithRetry(`/api/spotify/batch?offset=${offset}&limit=${BATCH_SIZE}`);
+        const params = new URLSearchParams({ id: song.id, title: song.title, artist: song.artist });
+        const resp = await fetch(`/api/spotify/single?${params}`);
 
-        if (!resp) {
-          // All retries failed for this batch — skip it
-          skippedBatches++;
-          offset += BATCH_SIZE;
-          setProgress(Math.min(offset, total));
-          setStats({ found: totalFound, notFound: totalNotFound, keyChanges: totalKeyChanges, bpmChanges: totalBpmChanges, skippedBatches });
-          await new Promise(r => setTimeout(r, 5000)); // longer pause after failure
+        if (resp.status === 429) {
+          // Rate limited — wait and retry this song
+          const data: SingleResult = await resp.json();
+          const wait = (data.retryAfter || 3) * 1000;
+          await new Promise(r => setTimeout(r, wait));
+          i--; // retry
           continue;
         }
 
-        const data = await resp.json();
-        total = data.total; // update with real total from server
-
-        totalFound += data.stats.found;
-        totalNotFound += data.stats.notFound;
-        totalKeyChanges += data.stats.keyChanges;
-        totalBpmChanges += data.stats.bpmChanges;
-
-        setProgress(Math.min(offset + BATCH_SIZE, total));
-        setStats({ found: totalFound, notFound: totalNotFound, keyChanges: totalKeyChanges, bpmChanges: totalBpmChanges, skippedBatches });
-
-        // Save this batch to DB immediately
-        const batchOverrides = (data.results as BatchResult[])
-          .filter((r: BatchResult) => r.spotifyId)
-          .map(toOverride);
-
-        if (batchOverrides.length > 0) {
-          const saveResp = await fetch('/api/spotify/apply', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ overrides: batchOverrides }),
-          });
-          if (saveResp.ok) {
-            allOverridesRef.current = [...allOverridesRef.current, ...batchOverrides as SongOverride[]];
-            setSaved(allOverridesRef.current.length);
-            onOverridesApplied(allOverridesRef.current);
-          }
-          // If save fails, just skip — data is still in Spotify, we can retry later
+        if (!resp.ok) {
+          skipped++;
+          setProgress(i + 1);
+          setStats({ found, notFound, skipped });
+          continue;
         }
 
-        if (!data.hasMore) break;
-        offset += BATCH_SIZE;
+        const data: SingleResult = await resp.json();
 
-        // Small delay between batches
-        await new Promise(r => setTimeout(r, 300));
+        if (data.found && data.spotifyId) {
+          found++;
+          pendingRef.current.push({
+            songId: data.id,
+            spotifyId: data.spotifyId,
+            key: data.spotifyKey ?? null,
+            bpm: data.spotifyBpm ?? null,
+            energy: data.energy ?? null,
+            danceability: data.danceability ?? null,
+            valence: data.valence ?? null,
+            acousticness: data.acousticness ?? null,
+            instrumentalness: data.instrumentalness ?? null,
+            liveness: data.liveness ?? null,
+            loudness: data.loudness ?? null,
+            speechiness: data.speechiness ?? null,
+            timeSignature: data.timeSignature ?? null,
+            durationMs: data.durationMs ?? null,
+          } as SongOverride);
+        } else {
+          notFound++;
+        }
       } catch {
-        // Completely unexpected error — skip batch and continue
-        skippedBatches++;
-        offset += BATCH_SIZE;
-        setProgress(Math.min(offset, total));
-        setStats({ found: totalFound, notFound: totalNotFound, keyChanges: totalKeyChanges, bpmChanges: totalBpmChanges, skippedBatches });
-        await new Promise(r => setTimeout(r, 5000));
+        skipped++;
+      }
+
+      setProgress(i + 1);
+      setStats({ found, notFound, skipped });
+
+      // Flush to DB periodically
+      if (pendingRef.current.length >= SAVE_EVERY) {
+        await flushToDb();
       }
     }
 
-    // Always finish — even if some batches were skipped
+    // Final flush
+    await flushToDb();
     onOverridesApplied(allOverridesRef.current);
     setState('done');
-  }, [onOverridesApplied, totalSongs]);
+  }, [songs, onOverridesApplied, flushToDb]);
 
-  const pct = totalSongs > 0 ? Math.round((progress / totalSongs) * 100) : 0;
+  const total = songs.length;
+  const pct = total > 0 ? Math.round((progress / total) * 100) : 0;
 
   return (
     <div style={styles.container}>
@@ -197,17 +166,15 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
             <div style={{ ...styles.progressFill, width: `${pct}%` }} />
           </div>
           <div style={styles.progressText}>
-            Fetching from Spotify... {progress}/{totalSongs} ({pct}%)
+            Fetching from Spotify... {progress}/{total} ({pct}%)
             {saved > 0 && <span style={styles.savedText}> &middot; {saved} saved</span>}
           </div>
           {stats && (
             <div style={styles.statsRow}>
               <span>Found: {stats.found}</span>
               <span>Not found: {stats.notFound}</span>
-              <span>Key changes: {stats.keyChanges}</span>
-              <span>BPM changes: {stats.bpmChanges}</span>
-              {stats.skippedBatches > 0 && (
-                <span style={{ color: 'var(--amber, #f0ad4e)' }}>Skipped: {stats.skippedBatches} batches</span>
+              {stats.skipped > 0 && (
+                <span style={{ color: 'var(--amber, #f0ad4e)' }}>Errors: {stats.skipped}</span>
               )}
             </div>
           )}
@@ -220,12 +187,10 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
             Done! {stats.found} songs enriched with Spotify data.
           </div>
           <div style={styles.statsRow}>
-            <span>Key changes: {stats.keyChanges}</span>
-            <span>BPM changes: {stats.bpmChanges}</span>
             <span>Not found: {stats.notFound}</span>
-            {stats.skippedBatches > 0 && (
+            {stats.skipped > 0 && (
               <span style={{ color: 'var(--amber, #f0ad4e)' }}>
-                {stats.skippedBatches} batches skipped (retry to fill gaps)
+                {stats.skipped} errors (retry to fill gaps)
               </span>
             )}
           </div>
@@ -310,10 +275,6 @@ const styles: Record<string, React.CSSProperties> = {
   savedText: {
     color: '#1DB954',
   },
-  savedNote: {
-    color: '#1DB954',
-    fontSize: 10,
-  },
   statsRow: {
     display: 'flex',
     gap: 12,
@@ -329,14 +290,5 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     color: '#1DB954',
     fontWeight: 600,
-  },
-  errorArea: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  errorText: {
-    fontSize: 11,
-    color: '#ff6b6b',
   },
 };
