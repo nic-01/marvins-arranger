@@ -369,4 +369,168 @@ export const songs1980s: SongTuple[] = [
   ['Toy Soldiers', 'Martika', 1989, '1980s', 116, 'D minor', 'Pop', 'F', 'M', 1, 'Step by step heart to heart'],
   ['Eternal Flame', 'The Bangles', 1989, '1980s', 76, 'G major', 'Pop', 'F', 'M', 33, 'Close your eyes give me your hand'],
   ['People Are People', 'Depeche Mode', 1984, '1980s', 120, 'E minor', 'Synth Pop', 'M', 'H', 10, 'So we\'re different colors'],
+
+  // === Round 3 additions ===
+
+  // Kate Bush (art-pop genius, Running Up That Hill revival)
+  ['Running Up That Hill', 'Kate Bush', 1985, '1980s', 108, 'C minor', 'Art Pop', 'F', 'H', 42, 'Stranger Things revival — massive singalong'],
+  ['Wuthering Heights', 'Kate Bush', 1978, '1980s', 130, 'A major', 'Art Pop', 'F', 'H', 6, 'Heathcliff! — iconic vocal hook'],
+  ['Hounds of Love', 'Kate Bush', 1985, '1980s', 116, 'D minor', 'Art Pop', 'F', 'H', 10, 'Take my shoes off and throw them in the lake'],
+  ['Babooshka', 'Kate Bush', 1980, '1980s', 120, 'E minor', 'Art Pop', 'F', 'H', 6, 'Dramatic theatrical pop'],
+  ['Cloudbusting', 'Kate Bush', 1985, '1980s', 128, 'C major', 'Art Pop', 'F', 'H', 8, 'Orchestral synth pop'],
+
+  // More Talking Heads (user 9.3h listening)
+  ['Psycho Killer', 'Talking Heads', 1977, '1980s', 100, 'A minor', 'New Wave', 'M', 'H', 6, 'Fa fa fa fa fa fa fa fa — bass riff'],
+  ['Road to Nowhere', 'Talking Heads', 1985, '1980s', 128, 'D major', 'New Wave', 'M', 'H', 38, 'We\'re on a road to nowhere — singalong'],
+  ['This Must Be the Place', 'Talking Heads', 1983, '1980s', 132, 'E major', 'New Wave', 'M', 'M', 5, 'Naive Melody — tender groove'],
+  ['Life During Wartime', 'Talking Heads', 1979, '1980s', 140, 'F major', 'New Wave', 'M', 'H', 6, 'This ain\'t no party — funk punk'],
+  ['And She Was', 'Talking Heads', 1985, '1980s', 120, 'E major', 'New Wave', 'M', 'H', 5, 'Pop-accessible Heads'],
+  ['Slippery People', 'Talking Heads', 1983, '1980s', 116, 'G major', 'Funk', 'M', 'H', 2, 'Funky live favorite'],
+
+  // More Prince (user 12.4h listening)
+  ['Raspberry Beret', 'Prince', 1985, '1980s', 130, 'A major', 'Pop', 'M', 'H', 42, 'The kind you find in a second hand store'],
+  ['I Would Die 4 U', 'Prince', 1984, '1980s', 200, 'F major', 'Synth Pop', 'M', 'H', 42, 'Dance floor anthem'],
+  ['Sign O the Times', 'Prince', 1987, '1980s', 100, 'F major', 'Funk', 'M', 'M', 6, 'Sparse funk masterpiece'],
+  ['Controversy', 'Prince', 1981, '1980s', 120, 'E minor', 'Funk', 'M', 'H', 2, 'Do I believe in God — funk groove'],
+  ['Pop Life', 'Prince', 1985, '1980s', 120, 'F major', 'Pop', 'M', 'M', 9, 'Underrated groove — keys driven'],
+  ['U Got the Look', 'Prince', 1987, '1980s', 112, 'A major', 'Pop', 'X', 'H', 6, 'Sheena Easton duet'],
+  ['Alphabet St', 'Prince', 1988, '1980s', 112, 'E major', 'Funk', 'M', 'H', 6, 'Late 80s funky Prince'],
+  ['I Wanna Be Your Lover', 'Prince', 1979, '1980s', 120, 'G major', 'Funk', 'M', 'H', 2, 'Early Prince disco-funk'],
+
+  // More Smiths (user taste — indie/alt)
+  ['This Charming Man', 'The Smiths', 1983, '1980s', 100, 'A major', 'Alt Rock', 'M', 'H', 4, 'Jangle-pop perfection — Marr guitar'],
+  ['Panic', 'The Smiths', 1986, '1980s', 132, 'B major', 'Alt Rock', 'M', 'H', 38, 'Hang the DJ hang the DJ hang the DJ'],
+  ['Heaven Knows I\'m Miserable Now', 'The Smiths', 1984, '1980s', 120, 'C major', 'Alt Rock', 'M', 'M', 4, 'Sardonic Morrissey classic'],
+  ['Girlfriend in a Coma', 'The Smiths', 1987, '1980s', 160, 'G major', 'Alt Rock', 'M', 'H', 4, 'Darkly funny singalong'],
+  ['Ask', 'The Smiths', 1986, '1980s', 128, 'G major', 'Alt Rock', 'M', 'H', 4, 'Shyness is nice — jangle pop'],
+
+  // More New Order + Joy Division
+  ['True Faith', 'New Order', 1987, '1980s', 120, 'D minor', 'Electronic', 'M', 'H', 42, 'Perfect dance-pop anthem'],
+  ['Temptation', 'New Order', 1982, '1980s', 135, 'C major', 'Electronic', 'M', 'H', 2, 'Trainspotting energy'],
+  ['Ceremony', 'New Order', 1981, '1980s', 140, 'F major', 'Post Punk', 'M', 'H', 6, 'Joy Division transition song'],
+  ['Love Will Tear Us Apart', 'Joy Division', 1980, '1980s', 140, 'D major', 'Post Punk', 'M', 'H', 38, 'Post-punk anthem — everyone knows it'],
+
+  // The Cure deeper
+  ['Close to Me', 'The Cure', 1985, '1980s', 128, 'A major', 'Pop', 'M', 'H', 17, 'Horn-driven pop Cure'],
+  ['Lullaby', 'The Cure', 1989, '1980s', 92, 'Bb minor', 'Gothic', 'M', 'M', 4, 'Spiderman is having me for dinner tonight'],
+  ['Pictures of You', 'The Cure', 1989, '1980s', 144, 'A major', 'New Wave', 'M', 'M', 4, 'Shimmering Disintegration classic'],
+  ['In Between Days', 'The Cure', 1985, '1980s', 140, 'A major', 'New Wave', 'M', 'H', 4, 'Jangly upbeat Cure'],
+  ['A Forest', 'The Cure', 1980, '1980s', 120, 'D minor', 'Post Punk', 'M', 'H', 4, 'Come closer dark atmosphere'],
+
+  // The Clash
+  ['Rock the Casbah', 'The Clash', 1982, '1980s', 128, 'D minor', 'Punk', 'M', 'H', 38, 'Shareef don\'t like it — singalong'],
+  ['Should I Stay or Should I Go', 'The Clash', 1982, '1980s', 113, 'D major', 'Punk', 'M', 'H', 38, 'Double or nothing singalong'],
+  ['London Calling', 'The Clash', 1979, '1980s', 136, 'E minor', 'Punk', 'M', 'H', 6, 'Punk anthem iconic bass'],
+
+  // David Bowie 80s (user loves Bowie)
+  ['Ashes to Ashes', 'David Bowie', 1980, '1980s', 120, 'Bb minor', 'Art Pop', 'M', 'M', 10, 'Major Tom sequel — ashes to ashes funk to funky'],
+  ['Modern Love', 'David Bowie', 1983, '1980s', 114, 'Ab major', 'Pop Rock', 'M', 'H', 50, 'Church of the poison mind — horn-driven pop'],
+  ['China Girl', 'David Bowie', 1983, '1980s', 104, 'E major', 'Pop', 'M', 'H', 6, 'Iggy Pop rework — pop hit'],
+  ['Blue Jean', 'David Bowie', 1984, '1980s', 128, 'C major', 'Pop', 'M', 'H', 6, 'Pop Bowie — catchy hook'],
+  ['Dancing in the Street', 'David Bowie & Mick Jagger', 1985, '1980s', 128, 'D major', 'Pop', 'M', 'H', 42, 'Live Aid duet singalong'],
+
+  // Billy Idol
+  ['White Wedding', 'Billy Idol', 1982, '1980s', 148, 'B minor', 'Punk Pop', 'M', 'H', 6, 'Nice day for a — guitar hook'],
+  ['Rebel Yell', 'Billy Idol', 1983, '1980s', 166, 'B major', 'Rock', 'M', 'H', 38, 'More more more singalong'],
+  ['Eyes Without a Face', 'Billy Idol', 1984, '1980s', 100, 'D minor', 'New Wave', 'M', 'M', 8, 'Les yeux sans visage'],
+  ['Dancing with Myself', 'Billy Idol', 1981, '1980s', 188, 'A major', 'Punk', 'M', 'H', 38, 'Oh oh oh singalong'],
+
+  // Bruce Springsteen 80s (user taste)
+  ['Born in the USA', 'Bruce Springsteen', 1984, '1980s', 122, 'B major', 'Rock', 'M', 'H', 42, 'THE American anthem — synth-rock'],
+  ['Dancing in the Dark', 'Bruce Springsteen', 1984, '1980s', 146, 'G major', 'Pop Rock', 'M', 'H', 42, 'You can\'t start a fire — synth driven'],
+  ['Glory Days', 'Bruce Springsteen', 1985, '1980s', 142, 'A major', 'Rock', 'M', 'H', 38, 'Speedball pitcher — singalong'],
+  ['I\'m on Fire', 'Bruce Springsteen', 1985, '1980s', 74, 'E major', 'Rock', 'M', 'M', 4, 'Hey little girl — brooding desire'],
+  ['Cover Me', 'Bruce Springsteen', 1984, '1980s', 138, 'G minor', 'Rock', 'M', 'H', 6, 'Synth-driven Springsteen rock'],
+  ['Brilliant Disguise', 'Bruce Springsteen', 1987, '1980s', 108, 'D major', 'Rock', 'M', 'M', 5, 'Tunnel of Love era — introspective'],
+
+  // The Pretenders
+  ['Brass in Pocket', 'The Pretenders', 1979, '1980s', 104, 'A major', 'New Wave', 'F', 'H', 6, 'Gonna use my arms gonna use my legs'],
+  ['Don\'t Get Me Wrong', 'The Pretenders', 1986, '1980s', 128, 'A major', 'Pop Rock', 'F', 'H', 6, 'Jangly pop single'],
+  ['Back on the Chain Gang', 'The Pretenders', 1982, '1980s', 116, 'D major', 'Rock', 'F', 'H', 6, 'Found a picture of you'],
+
+  // Fleetwood Mac 80s
+  ['Little Lies', 'Fleetwood Mac', 1987, '1980s', 104, 'D major', 'Pop Rock', 'F', 'H', 42, 'Tell me lies tell me sweet little lies'],
+  ['Everywhere', 'Fleetwood Mac', 1987, '1980s', 76, 'C major', 'Pop', 'F', 'M', 33, 'Everywhere I go singalong — Tango in the Night'],
+  ['Big Love', 'Fleetwood Mac', 1987, '1980s', 118, 'Db major', 'Pop Rock', 'M', 'H', 6, 'Driving guitar pop — Buckingham showcase'],
+
+  // R.E.M.
+  ['It\'s the End of the World as We Know It', 'R.E.M.', 1987, '1980s', 126, 'D major', 'Alt Rock', 'M', 'H', 38, 'And I feel fine singalong'],
+  ['The One I Love', 'R.E.M.', 1987, '1980s', 118, 'D minor', 'Alt Rock', 'M', 'H', 4, 'A simple prop — fire'],
+  ['Stand', 'R.E.M.', 1989, '1980s', 126, 'E major', 'Alt Rock', 'M', 'H', 38, 'Stand in the place where you live'],
+  ['Orange Crush', 'R.E.M.', 1988, '1980s', 120, 'E minor', 'Alt Rock', 'M', 'H', 6, 'Green era — driving rock'],
+
+  // Erasure / Synth deeper
+  ['A Little Respect', 'Erasure', 1988, '1980s', 110, 'G major', 'Synth Pop', 'M', 'H', 42, 'Oh baby please — singalong anthem'],
+  ['Sometimes', 'Erasure', 1986, '1980s', 108, 'G major', 'Synth Pop', 'M', 'M', 10, 'Tender electronic pop'],
+  ['Forever Young', 'Alphaville', 1984, '1980s', 120, 'G minor', 'Synth Pop', 'M', 'H', 42, 'Anthemic — let\'s dance in style singalong'],
+  ['Big in Japan', 'Alphaville', 1984, '1980s', 128, 'E minor', 'Synth Pop', 'M', 'H', 10, 'Synth-pop new wave classic'],
+  ['She Blinded Me with Science', 'Thomas Dolby', 1982, '1980s', 108, 'D major', 'Synth Pop', 'M', 'H', 10, 'Science! — quirky synth hook'],
+  ['Lessons in Love', 'Level 42', 1986, '1980s', 116, 'C major', 'Pop', 'M', 'H', 9, 'Mark King bassline — funk-pop'],
+  ['Something About You', 'Level 42', 1985, '1980s', 104, 'Bb major', 'Pop', 'M', 'M', 9, 'Level 42 synth-pop'],
+
+  // Ska revival
+  ['A Message to You Rudy', 'The Specials', 1979, '1980s', 138, 'F major', 'Ska', 'M', 'H', 22, 'Trombone hook — 2-Tone classic'],
+  ['Ghost Town', 'The Specials', 1981, '1980s', 112, 'C minor', 'Ska', 'M', 'M', 17, 'Eerie horn-driven classic'],
+  ['Red Red Wine', 'UB40', 1983, '1980s', 80, 'E major', 'Reggae Pop', 'M', 'M', 33, 'Red red wine stay close to me singalong'],
+
+  // Dire Straits deeper
+  ['Walk of Life', 'Dire Straits', 1985, '1980s', 168, 'E major', 'Rock', 'M', 'H', 14, 'Organ riff — feel-good rock'],
+  ['Romeo and Juliet', 'Dire Straits', 1980, '1980s', 100, 'F major', 'Rock', 'M', 'M', 5, 'Knopfler storytelling ballad'],
+  ['Brothers in Arms', 'Dire Straits', 1985, '1980s', 76, 'G# minor', 'Rock', 'M', 'M', 4, 'Atmospheric slow build'],
+
+  // Soul / R&B / Hip-Hop deeper
+  ['Super Freak', 'Rick James', 1981, '1980s', 132, 'A minor', 'Funk', 'M', 'H', 42, 'She\'s a very kinky girl — MC Hammer sampled'],
+  ['Every Little Step', 'Bobby Brown', 1989, '1980s', 112, 'Db major', 'R&B', 'M', 'H', 2, 'New jack swing classic'],
+  ['My Prerogative', 'Bobby Brown', 1988, '1980s', 108, 'Eb minor', 'R&B', 'M', 'H', 2, 'Don\'t need permission'],
+  ['Smooth Operator', 'Sade', 1984, '1980s', 100, 'G minor', 'Jazz Pop', 'F', 'M', 17, 'Coast to coast — horn-driven smooth'],
+  ['Holding Back the Years', 'Simply Red', 1985, '1980s', 72, 'G major', 'Pop', 'M', 'M', 33, 'Mick Hucknall\'s blue-eyed soul'],
+  ['Fast Car', 'Tracy Chapman', 1988, '1980s', 104, 'C major', 'Folk', 'F', 'M', 37, 'Acoustic power — singalong chorus'],
+
+  // Tears for Fears deeper
+  ['Mad World', 'Tears for Fears', 1983, '1980s', 88, 'F minor', 'Synth Pop', 'M', 'M', 10, 'Original version — the dreams in which I\'m dying'],
+  ['Sowing the Seeds of Love', 'Tears for Fears', 1989, '1980s', 84, 'G major', 'Pop', 'M', 'M', 5, 'Beatles-esque pop ambition'],
+
+  // More 80s essentials
+  ['Higher Love', 'Steve Winwood', 1986, '1980s', 100, 'Bb major', 'Pop Rock', 'M', 'H', 42, 'Bring me a higher love singalong — Whitney remix revival'],
+  ['Valerie', 'Steve Winwood', 1982, '1980s', 125, 'D major', 'Pop Rock', 'M', 'H', 14, 'Synth and horns — catchy hook'],
+  ['Got My Mind Set on You', 'George Harrison', 1987, '1980s', 148, 'Ab major', 'Pop', 'M', 'H', 42, 'George comeback — infectious singalong'],
+  ['Starting Over', 'John Lennon', 1980, '1980s', 112, 'A major', 'Pop Rock', 'M', 'H', 5, 'Lennon comeback single'],
+  ['Woman', 'John Lennon', 1981, '1980s', 62, 'Eb major', 'Pop', 'M', 'M', 33, 'I can hardly express — tender ballad'],
+  ['Every Time You Go Away', 'Paul Young', 1985, '1980s', 88, 'F major', 'Pop', 'M', 'M', 33, 'Blue-eyed soul singalong'],
+  ['I Just Died in Your Arms', 'Cutting Crew', 1987, '1980s', 108, 'G minor', 'Pop', 'M', 'H', 38, 'Tonight — singalong pop-rock'],
+
+  // Psychedelic Furs / Post-punk pop
+  ['Pretty in Pink', 'Psychedelic Furs', 1981, '1980s', 140, 'F major', 'Post Punk', 'M', 'H', 6, 'John Hughes movie — but the original'],
+  ['Love My Way', 'Psychedelic Furs', 1982, '1980s', 116, 'C major', 'New Wave', 'M', 'H', 10, 'Marimba-driven new wave'],
+  ['Hold Me Now', 'Thompson Twins', 1983, '1980s', 120, 'C major', 'Synth Pop', 'M', 'M', 10, 'Tender synth-pop — hold me now singalong'],
+  ['Doctor Doctor', 'Thompson Twins', 1984, '1980s', 132, 'A minor', 'Synth Pop', 'M', 'H', 10, 'Give me the news'],
+
+  // Elvis Costello
+  ['Oliver\'s Army', 'Elvis Costello', 1979, '1980s', 156, 'A major', 'New Wave', 'M', 'H', 14, 'ABBA-esque hook — witty lyrics'],
+  ['Pump It Up', 'Elvis Costello', 1978, '1980s', 160, 'E major', 'Punk', 'M', 'H', 6, 'Frantic punk-pop energy'],
+  ['Everyday I Write the Book', 'Elvis Costello', 1983, '1980s', 148, 'D major', 'Pop', 'M', 'H', 17, 'Horn-driven pop — accessible Costello'],
+
+  // Australian deeper
+  ['Under the Milky Way', 'The Church', 1988, '1980s', 76, 'A minor', 'Alt Rock', 'M', 'M', 4, 'Atmospheric Oz rock — bagpipe outro'],
+  ['Unguarded Moment', 'The Church', 1981, '1980s', 132, 'D major', 'Alt Rock', 'M', 'H', 4, 'Jangle pop — early Church'],
+  ['What\'s My Scene', 'Hoodoo Gurus', 1987, '1980s', 138, 'G major', 'Rock', 'M', 'H', 38, 'Oz pub rock singalong'],
+  ['Like Wow Wipeout', 'Hoodoo Gurus', 1984, '1980s', 180, 'D major', 'Rock', 'M', 'H', 6, 'Frantic Oz garage rock'],
+  ['Funky Town', 'Pseudo Echo', 1986, '1980s', 120, 'G minor', 'Synth Pop', 'M', 'H', 42, 'Won\'t you take me to — Oz synth cover'],
+  ['Out of Mind Out of Sight', 'Models', 1985, '1980s', 120, 'A major', 'New Wave', 'M', 'H', 10, 'Oz new wave synth hit'],
+  ['You\'re Gonna Get Hurt', 'John Farnham', 1986, '1980s', 132, 'G major', 'Pop', 'M', 'H', 3, 'Whispering Jack era'],
+  ['Pressure Down', 'John Farnham', 1986, '1980s', 120, 'Eb major', 'Pop Rock', 'M', 'H', 3, 'Farnham comeback'],
+
+  // Pixies (user alt-rock taste)
+  ['Where Is My Mind', 'Pixies', 1988, '1980s', 80, 'E major', 'Alt Rock', 'M', 'M', 4, 'Fight Club — ooh stop — iconic'],
+  ['Here Comes Your Man', 'Pixies', 1989, '1980s', 160, 'D major', 'Alt Rock', 'M', 'H', 4, 'Jangly pop perfection'],
+
+  // Misc crowd-pleasers & hooks
+  ['Tenderness', 'General Public', 1984, '1980s', 120, 'G major', 'Ska Pop', 'M', 'H', 17, 'Horn-driven ska-pop — feel good'],
+  ['Pump Up the Volume', 'M/A/R/R/S', 1987, '1980s', 126, 'G minor', 'Electronic', 'I', 'H', 2, 'Sampling revolution dance classic'],
+  ['You\'re the Voice', 'John Farnham', 1986, '1980s', 116, 'Ab major', 'Pop Rock', 'M', 'H', 50, 'Bagpipes horn singalong — Oz anthem'],
+  ['Waiting for a Star to Fall', 'Boy Meets Girl', 1988, '1980s', 100, 'C major', 'Pop', 'X', 'M', 8, 'Synth-pop ballad — catchy chorus'],
+  ['The Whole of the Moon', 'The Waterboys', 1985, '1980s', 148, 'D major', 'Rock', 'M', 'H', 22, 'I saw the crescent you saw the whole of the moon'],
+  ['Don\'t You Know', 'Butterfingers', 1988, '1980s', 128, 'D major', 'Rock', 'M', 'H', 6, 'Oz funk-rock'],
+  ['Hysteria', 'Def Leppard', 1987, '1980s', 92, 'C# minor', 'Rock', 'M', 'H', 6, 'Title track — Leppard at peak'],
+  ['Love Bites', 'Def Leppard', 1988, '1980s', 69, 'C major', 'Rock', 'M', 'M', 37, 'Power ballad singalong'],
 ];

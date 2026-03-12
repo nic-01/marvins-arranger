@@ -295,4 +295,152 @@ export const songs2010s: SongTuple[] = [
   ['Royals', 'Lorde', 2013, '2010s', 85, 'D major', 'Pop', 'F', 'M', 2, 'And we\'ll never be royals NZ icon'],
   ['My House', 'Flo Rida', 2015, '2010s', 124, 'A minor', 'Pop', 'M', 'H', 42, 'Welcome to my house'],
   ['Geronimo', 'Sheppard', 2014, '2010s', 125, 'Bb major', 'Pop', 'X', 'H', 42, 'Brisbane pop singalong - Aussie!'],
+
+  // === Round 3 additions ===
+
+  // Tame Impala deep dive (user 26.8h listening!)
+  ['Feels Like We Only Go Backwards', 'Tame Impala', 2012, '2010s', 104, 'B major', 'Psychedelic Pop', 'M', 'M', 37, 'Reverse guitar — psych-pop singalong — Aussie'],
+  ['New Person Same Old Mistakes', 'Tame Impala', 2015, '2010s', 136, 'F# minor', 'Psychedelic Pop', 'M', 'H', 10, 'Synth-driven evolution — Rihanna covered it — Aussie'],
+  ['Eventually', 'Tame Impala', 2015, '2010s', 108, 'B minor', 'Psychedelic Pop', 'M', 'H', 10, 'Building synth epic — Aussie'],
+  ['Borderline', 'Tame Impala', 2019, '2010s', 120, 'C# minor', 'Synth Pop', 'M', 'H', 10, 'Disco-psych — L.A. moves — Aussie'],
+  ['Lost in Yesterday', 'Tame Impala', 2020, '2010s', 102, 'D major', 'Synth Pop', 'M', 'H', 2, 'Nostalgia groove — Aussie'],
+  ['Is It True', 'Tame Impala', 2020, '2010s', 104, 'E major', 'Disco', 'M', 'H', 2, 'Disco Tame Impala — Aussie'],
+  ['Patience', 'Tame Impala', 2019, '2010s', 118, 'C major', 'Synth Pop', 'M', 'H', 10, 'Has it really been that long — disco-psych — Aussie'],
+  ['Mind Mischief', 'Tame Impala', 2012, '2010s', 106, 'B major', 'Psychedelic Rock', 'M', 'H', 4, 'Oh eventually — guitar psych — Aussie'],
+  ['Nangs', 'Tame Impala', 2015, '2010s', 60, 'G minor', 'Psychedelic Pop', 'I', 'L', 10, 'Interlude vibes — brief but iconic — Aussie'],
+  ['Cause I\'m a Man', 'Tame Impala', 2015, '2010s', 108, 'D major', 'Psychedelic Pop', 'M', 'M', 9, 'Tender synth — keys groove — Aussie'],
+
+  // Jamie xx / The xx (user taste)
+  ['Loud Places', 'Jamie xx ft Romy', 2015, '2010s', 110, 'C major', 'Electronic', 'F', 'H', 42, 'I go to loud places — euphoric singalong'],
+  ['Gosh', 'Jamie xx', 2015, '2010s', 128, 'C minor', 'Electronic', 'I', 'H', 2, 'Oh gosh — rave build — massive drop'],
+  ['On Hold', 'The xx', 2017, '2010s', 108, 'E minor', 'Indie Pop', 'X', 'M', 2, 'Hall & Oates sample — intimate groove'],
+  ['Crystalised', 'The xx', 2009, '2010s', 120, 'F minor', 'Indie Pop', 'X', 'M', 4, 'You\'ve applied the pressure — minimal pop'],
+  ['Intro', 'The xx', 2009, '2010s', 100, 'C major', 'Indie Pop', 'I', 'M', 4, 'Iconic instrumental — everyone knows it'],
+
+  // SOPHIE (user taste — art-pop/experimental)
+  ['Immaterial', 'SOPHIE', 2018, '2010s', 135, 'D major', 'Art Pop', 'F', 'H', 2, 'I could be anything I want — hyper-pop'],
+  ['Faceshopping', 'SOPHIE', 2018, '2010s', 130, 'C minor', 'Art Pop', 'F', 'H', 2, 'My face is the front of shop — industrial pop'],
+  ['It\'s Okay to Cry', 'SOPHIE', 2017, '2010s', 108, 'Bb major', 'Art Pop', 'F', 'M', 8, 'Tender synth ballad'],
+  ['Bipp', 'SOPHIE', 2013, '2010s', 140, 'D major', 'Electronic', 'F', 'H', 2, 'Bubblegum bass pioneer'],
+
+  // Bon Iver (user taste)
+  ['Skinny Love', 'Bon Iver', 2008, '2010s', 76, 'C major', 'Indie Folk', 'M', 'M', 4, 'Come on skinny love — falsetto folk'],
+  ['Holocene', 'Bon Iver', 2011, '2010s', 120, 'D major', 'Indie Folk', 'M', 'M', 4, 'And at once I knew — atmospheric'],
+  ['715 CREEKS', 'Bon Iver', 2016, '2010s', 80, 'F# major', 'Art Pop', 'M', 'M', 10, 'Vocoder-driven — 22 A Million era'],
+  ['Hey Ma', 'Bon Iver', 2019, '2010s', 96, 'E major', 'Art Pop', 'M', 'M', 10, 'iComma — synth folk evolution'],
+
+  // Gang of Youths (user taste — Aussie)
+  ['Let Me Down Easy', 'Gang of Youths', 2017, '2010s', 108, 'G major', 'Indie Rock', 'M', 'H', 38, 'Aussie anthem — stadium singalong'],
+  ['Magnolia', 'Gang of Youths', 2017, '2010s', 100, 'D major', 'Indie Rock', 'M', 'H', 42, 'Building epic — Go Farther in Lightness — Aussie'],
+  ['The Deepest Sighs the Frankest Shadows', 'Gang of Youths', 2017, '2010s', 170, 'Bb major', 'Indie Rock', 'M', 'H', 6, 'Epic 7-min rock journey — Aussie'],
+  ['Say Yes', 'Gang of Youths', 2015, '2010s', 120, 'A major', 'Indie Rock', 'M', 'H', 38, 'Debut anthem — Aussie indie'],
+  ['The Heart Is a Muscle', 'Gang of Youths', 2017, '2010s', 124, 'G major', 'Indie Rock', 'M', 'H', 6, 'Rock build — Aussie'],
+  ['Unison', 'Gang of Youths', 2022, '2010s', 120, 'C major', 'Indie Rock', 'M', 'H', 42, 'Angel in Realtime era — Aussie'],
+
+  // Frank Ocean
+  ['Thinkin Bout You', 'Frank Ocean', 2012, '2010s', 68, 'Ab major', 'R&B', 'M', 'M', 1, 'A tornado flew around my room'],
+  ['Nights', 'Frank Ocean', 2016, '2010s', 108, 'D minor', 'R&B', 'M', 'H', 2, 'Beat switch — Blonde masterpiece'],
+  ['Pyramids', 'Frank Ocean', 2012, '2010s', 80, 'Ab major', 'R&B', 'M', 'H', 10, '10-minute epic — synth funk'],
+
+  // Childish Gambino / Anderson .Paak
+  ['Redbone', 'Childish Gambino', 2016, '2010s', 82, 'Db major', 'Funk', 'M', 'M', 1, 'Stay woke — Bootsy Collins funk groove'],
+  ['This Is America', 'Childish Gambino', 2018, '2010s', 120, 'F minor', 'Hip Hop', 'M', 'H', 2, 'Cultural moment — genre-shifting'],
+  ['Come Down', 'Anderson .Paak', 2016, '2010s', 86, 'G minor', 'Funk', 'M', 'H', 50, 'Horn-driven funk — live energy'],
+  ['Dang!', 'Mac Miller ft Anderson .Paak', 2016, '2010s', 116, 'D major', 'R&B', 'M', 'M', 1, 'Smooth groove — soulful collab'],
+
+  // Flume / Australian electronic (user taste)
+  ['Holdin On', 'Flume', 2012, '2010s', 92, 'Eb major', 'Electronic', 'M', 'H', 2, 'Future bass pioneer — Aussie'],
+  ['Never Be Like You', 'Flume ft Kai', 2016, '2010s', 134, 'Eb major', 'Electronic', 'F', 'H', 42, 'What I would do — singalong — Aussie'],
+  ['Say It', 'Flume ft Tove Lo', 2016, '2010s', 93, 'E minor', 'Electronic', 'F', 'H', 2, 'Emotional bass music — Aussie'],
+  ['Innerbloom', 'Rufus Du Sol', 2016, '2010s', 124, 'F minor', 'Electronic', 'M', 'H', 2, '10-min dance epic — Aussie'],
+  ['You Were Right', 'Rufus Du Sol', 2016, '2010s', 120, 'D minor', 'Electronic', 'M', 'H', 42, 'Festival anthem — Aussie'],
+  ['No Place', 'Rufus Du Sol', 2018, '2010s', 122, 'D minor', 'Electronic', 'M', 'H', 42, 'There is no place — singalong — Aussie'],
+  ['Gold', 'Chet Faker', 2014, '2010s', 104, 'D minor', 'Electronic', 'M', 'M', 2, 'Scooter guy video — Aussie'],
+  ['Talk Is Cheap', 'Chet Faker', 2014, '2010s', 120, 'C major', 'Electronic', 'M', 'M', 1, 'Soulful electronica — Aussie'],
+
+  // Courtney Barnett (user taste — Aussie)
+  ['Pedestrian at Best', 'Courtney Barnett', 2015, '2010s', 180, 'D major', 'Indie Rock', 'F', 'H', 4, 'Put me on a pedestal — frantic garage — Aussie'],
+  ['Avant Gardener', 'Courtney Barnett', 2013, '2010s', 120, 'E major', 'Indie Rock', 'F', 'M', 4, 'Anaphylactic garden song — Aussie deadpan'],
+  ['Depreston', 'Courtney Barnett', 2015, '2010s', 96, 'G major', 'Indie Rock', 'F', 'M', 4, 'House hunting in the burbs — Aussie'],
+
+  // Disclosure deeper
+  ['White Noise', 'Disclosure ft AlunaGeorge', 2013, '2010s', 128, 'F minor', 'House', 'F', 'H', 2, 'UK garage-house — vocal hook'],
+  ['You & Me', 'Disclosure ft Eliza Doolittle', 2013, '2010s', 125, 'Eb major', 'House', 'F', 'H', 2, 'Flume remix made it even bigger'],
+  ['Magnets', 'Disclosure ft Lorde', 2015, '2010s', 92, 'D minor', 'House', 'F', 'M', 2, 'Lorde goes dark electronic'],
+
+  // Run the Jewels (user would love)
+  ['Close Your Eyes (And Count to F)', 'Run the Jewels', 2014, '2010s', 84, 'D minor', 'Hip Hop', 'M', 'H', 2, 'Zack de la Rocha feature — aggressive'],
+  ['Legend Has It', 'Run the Jewels', 2017, '2010s', 90, 'F minor', 'Hip Hop', 'M', 'H', 2, 'Baby Driver soundtrack — RTJ3'],
+
+  // Lorde deeper
+  ['Supercut', 'Lorde', 2017, '2010s', 120, 'D major', 'Pop', 'F', 'H', 42, 'In my head I do everything right — singalong'],
+  ['Homemade Dynamite', 'Lorde', 2017, '2010s', 108, 'B minor', 'Pop', 'F', 'H', 2, 'Melodrama perfection'],
+  ['Perfect Places', 'Lorde', 2017, '2010s', 112, 'F major', 'Pop', 'F', 'H', 42, 'Every night I live and die — singalong'],
+  ['Solar Power', 'Lorde', 2021, '2010s', 110, 'C major', 'Pop', 'F', 'M', 5, 'Turn it up — summer groove'],
+
+  // Daft Punk RAM era
+  ['Instant Crush', 'Daft Punk ft Julian Casablancas', 2013, '2010s', 104, 'Bb minor', 'Disco', 'M', 'M', 10, 'Strokes vocalist — synth disco'],
+  ['Lose Yourself to Dance', 'Daft Punk ft Pharrell', 2013, '2010s', 100, 'Bb minor', 'Disco', 'M', 'H', 42, 'Come on come on — Nile Rodgers guitar'],
+  ['Give Life Back to Music', 'Daft Punk', 2013, '2010s', 115, 'F# minor', 'Disco', 'I', 'H', 6, 'Album opener — Nile Rodgers funk guitar'],
+  ['Giorgio by Moroder', 'Daft Punk', 2013, '2010s', 74, 'F minor', 'Electronic', 'I', 'H', 10, 'Spoken word to synth — epic journey'],
+
+  // Royal Blood / Rock 2010s
+  ['Figure It Out', 'Royal Blood', 2014, '2010s', 148, 'D minor', 'Rock', 'M', 'H', 6, 'Bass-guitar duo — heavy riff'],
+  ['Out of the Black', 'Royal Blood', 2014, '2010s', 168, 'E minor', 'Rock', 'M', 'H', 6, 'Frantic rock energy'],
+  ['Mountain at My Gates', 'Foals', 2015, '2010s', 128, 'Bb major', 'Indie Rock', 'M', 'H', 6, 'Guitar-driven Foals'],
+  ['My Number', 'Foals', 2013, '2010s', 148, 'C# minor', 'Indie Rock', 'M', 'H', 6, 'Dance-rock funk'],
+  ['Joy', 'IDLES', 2018, '2010s', 160, 'D minor', 'Punk', 'M', 'H', 6, 'Colossus — post-punk fury'],
+  ['Never Fight a Man with a Perm', 'IDLES', 2018, '2010s', 100, 'A minor', 'Punk', 'M', 'H', 6, 'Bristolian post-punk humor'],
+
+  // Glass Animals
+  ['Gooey', 'Glass Animals', 2014, '2010s', 80, 'C major', 'Indie Pop', 'M', 'M', 2, 'Psych-pop groove'],
+  ['Heat Waves', 'Glass Animals', 2020, '2010s', 80, 'D major', 'Indie Pop', 'M', 'M', 37, 'Sometimes all I think about is you — late bloomer hit'],
+
+  // St. Vincent / Art-rock
+  ['Los Ageless', 'St. Vincent', 2017, '2010s', 128, 'Bb minor', 'Art Rock', 'F', 'H', 10, 'How can anybody have you — synth art-rock'],
+  ['Digital Witness', 'St. Vincent', 2014, '2010s', 128, 'D minor', 'Art Rock', 'F', 'H', 17, 'Horn-driven art-pop — people turn the TV on'],
+
+  // The War on Drugs
+  ['Red Eyes', 'The War on Drugs', 2014, '2010s', 132, 'D major', 'Indie Rock', 'M', 'H', 10, 'Driving synth-rock — Springsteen meets shoegaze'],
+  ['Under the Pressure', 'The War on Drugs', 2014, '2010s', 120, 'E major', 'Indie Rock', 'M', 'H', 10, 'Epic build — Lost in the Dream'],
+
+  // Father John Misty
+  ['Real Love Baby', 'Father John Misty', 2016, '2010s', 104, 'Bb major', 'Indie Rock', 'M', 'H', 38, 'Feel-good singalong — summer anthem'],
+
+  // Vampire Weekend 2010s
+  ['Diane Young', 'Vampire Weekend', 2013, '2010s', 170, 'D major', 'Indie Pop', 'M', 'H', 6, 'Frantic rockabilly-pop energy'],
+  ['Unbelievers', 'Vampire Weekend', 2013, '2010s', 130, 'A major', 'Indie Pop', 'M', 'H', 6, 'Girl you and I will die unbelievers'],
+  ['Harmony Hall', 'Vampire Weekend', 2019, '2010s', 132, 'F major', 'Indie Pop', 'M', 'H', 42, 'I don\'t wanna live like this — singalong'],
+
+  // Tyler the Creator
+  ['See You Again', 'Tyler the Creator', 2017, '2010s', 80, 'Ab major', 'Hip Hop', 'M', 'M', 9, 'Kali Uchis vocals — bittersweet keys'],
+  ['EARFQUAKE', 'Tyler the Creator', 2019, '2010s', 80, 'Bb major', 'Pop', 'M', 'M', 9, 'Don\'t leave — tender synth pop-rap'],
+  ['IFHY', 'Tyler the Creator', 2013, '2010s', 120, 'F# minor', 'Hip Hop', 'M', 'H', 10, 'I effing hate you — Neptune\'s style'],
+
+  // Lizzo
+  ['Juice', 'Lizzo', 2019, '2010s', 120, 'Bb major', 'Pop', 'F', 'H', 50, 'Mirror mirror on the wall — horn party funk'],
+  ['Good as Hell', 'Lizzo', 2016, '2010s', 96, 'D major', 'Pop', 'F', 'H', 50, 'Feeling good as hell — horn singalong'],
+  ['Truth Hurts', 'Lizzo', 2019, '2010s', 120, 'C major', 'Pop', 'F', 'H', 50, 'I just took a DNA test — horn-driven anthem'],
+
+  // More Aussie deep
+  ['Avant Gardener', 'Courtney Barnett', 2013, '2010s', 120, 'A major', 'Indie Rock', 'F', 'M', 4, 'I sleep in late another day — Aussie'],
+  ['King Gizzard', 'Rattlesnake', 2017, '2010s', 120, 'A minor', 'Psychedelic Rock', 'M', 'H', 6, 'Prolific Oz psych-rock — Aussie'],
+  ['On Track', 'Tash Sultana', 2016, '2010s', 80, 'D major', 'Psychedelic Pop', 'X', 'M', 4, 'One-person band — Aussie busker to star'],
+  ['Jungle', 'Tash Sultana', 2016, '2010s', 116, 'E minor', 'Psychedelic Rock', 'X', 'H', 6, 'Loop pedal magic — Aussie'],
+  ['Spirit', 'DMA\'s', 2018, '2010s', 108, 'G major', 'Indie Rock', 'M', 'M', 37, 'Oasis-meets-dance — Aussie Britpop'],
+  ['Delete', 'DMA\'s', 2018, '2010s', 125, 'C major', 'Indie Rock', 'M', 'H', 42, 'Singalong anthem — Aussie'],
+  ['Lay Down', 'DMA\'s', 2016, '2010s', 120, 'E major', 'Indie Rock', 'M', 'H', 38, 'Britpop revival — Aussie singalong'],
+
+  // Charli XCX (early — user taste)
+  ['Boom Clap', 'Charli XCX', 2014, '2010s', 150, 'F major', 'Pop', 'F', 'H', 42, 'Boom clap the sound of my heart singalong'],
+  ['I Love It', 'Icona Pop ft Charli XCX', 2012, '2010s', 126, 'Bb major', 'Dance Pop', 'F', 'H', 42, 'I don\'t care I love it singalong'],
+  ['1999', 'Charli XCX ft Troye Sivan', 2018, '2010s', 105, 'G major', 'Pop', 'X', 'H', 42, 'I just wanna go back — 90s nostalgia pop'],
+  ['Boys', 'Charli XCX', 2017, '2010s', 100, 'G major', 'Pop', 'F', 'H', 2, 'I was busy thinking about boys'],
+
+  // FKA twigs
+  ['Cellophane', 'FKA twigs', 2019, '2010s', 68, 'Eb minor', 'Art Pop', 'F', 'L', 8, 'Pole dancing on a piano — breathtaking'],
+
+  // Grimes
+  ['Oblivion', 'Grimes', 2012, '2010s', 128, 'D major', 'Art Pop', 'F', 'H', 10, 'Synth-pop art — ethereal vocals'],
+  ['Genesis', 'Grimes', 2012, '2010s', 128, 'Eb major', 'Art Pop', 'F', 'H', 10, 'Visions era — hypnotic'],
 ];

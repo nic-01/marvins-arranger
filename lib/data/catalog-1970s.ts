@@ -340,4 +340,110 @@ export const songs1970s: SongTuple[] = [
   ['The Bitch Is Back', 'Elton John', 1974, '1970s', 126, 'G major', 'Rock', 'M', 'H', 14, 'I\'m a bitch singalong'],
   ['Island Girl', 'Elton John', 1975, '1970s', 126, 'E major', 'Pop', 'M', 'H', 10, 'Tropical Elton'],
   ['Sorry Seems to Be the Hardest Word', 'Elton John', 1976, '1970s', 64, 'G minor', 'Pop', 'M', 'L', 8, 'Elton ballad'],
+
+  // === Round 3 additions ===
+
+  // Pink Floyd (Nick loves structural patience and building music)
+  ['Money', 'Pink Floyd', 1973, '1970s', 126, 'B minor', 'Rock', 'M', 'H', 6, '7/4 time cash register riff everyone knows'],
+  ['Another Brick in the Wall', 'Pink Floyd', 1979, '1970s', 104, 'D minor', 'Rock', 'X', 'H', 38, 'We don\'t need no education singalong'],
+  ['Comfortably Numb', 'Pink Floyd', 1979, '1970s', 64, 'B minor', 'Rock', 'M', 'H', 4, 'Guitar solo for the ages'],
+  ['Wish You Were Here', 'Pink Floyd', 1975, '1970s', 120, 'G major', 'Rock', 'M', 'M', 37, 'Two lost souls singalong'],
+  ['Time', 'Pink Floyd', 1973, '1970s', 130, 'F# minor', 'Rock', 'M', 'H', 6, 'Ticking clocks intro everyone knows'],
+  ['Breathe', 'Pink Floyd', 1973, '1970s', 64, 'E minor', 'Rock', 'M', 'L', 4, 'Breathe in the air Dark Side opener'],
+
+  // More Prog / Art Rock (Nick\'s structural taste)
+  ['Roundabout', 'Yes', 1972, '1970s', 136, 'E major', 'Prog Rock', 'M', 'H', 6, 'To Be Continued meme intro'],
+  ['Close to the Edge', 'Yes', 1972, '1970s', 130, 'A major', 'Prog Rock', 'M', 'H', 4, 'Prog rock epic'],
+  ['I Can\'t Dance', 'Genesis', 1991, '1970s', 108, 'E minor', 'Rock', 'M', 'H', 6, 'Phil Collins era Genesis'],
+  ['Turn It On Again', 'Genesis', 1980, '1970s', 124, 'E major', 'Rock', 'M', 'H', 6, 'Turn it on turn it on'],
+  ['That\'s All', 'Genesis', 1983, '1970s', 100, 'G major', 'Pop Rock', 'M', 'M', 13, 'Taking it all too hard'],
+  ['In the Court of the Crimson King', 'King Crimson', 1969, '1970s', 108, 'E minor', 'Prog Rock', 'M', 'H', 12, 'Prog rock landmark'],
+  ['21st Century Schizoid Man', 'King Crimson', 1969, '1970s', 130, 'A minor', 'Prog Rock', 'M', 'H', 6, 'Heavy proto-metal prog'],
+
+  // More Steely Dan (Nick listens to 5.9h — jazzy sophistication)
+  ['Do It Again', 'Steely Dan', 1972, '1970s', 108, 'A minor', 'Rock', 'M', 'H', 10, 'Electric sitar groove'],
+  ['Peg', 'Steely Dan', 1977, '1970s', 120, 'G major', 'Pop Rock', 'M', 'H', 9, 'Studio perfection'],
+  ['Deacon Blues', 'Steely Dan', 1977, '1970s', 108, 'A major', 'Jazz Rock', 'M', 'M', 17, 'Sax-driven jazz-rock'],
+  ['Kid Charlemagne', 'Steely Dan', 1976, '1970s', 138, 'Eb major', 'Rock', 'M', 'H', 6, 'Guitar solo showcase'],
+  ['FM', 'Steely Dan', 1978, '1970s', 120, 'D major', 'Pop Rock', 'M', 'H', 13, 'No static at all'],
+
+  // More Springsteen (42.9h Mahler but 10h+ Bruce — storytelling craft)
+  ['Hungry Heart', 'Bruce Springsteen', 1980, '1970s', 126, 'Ab major', 'Rock', 'M', 'H', 42, 'Everybody\'s got a hungry heart singalong'],
+  ['Glory Days', 'Bruce Springsteen', 1985, '1970s', 148, 'A major', 'Rock', 'M', 'H', 38, 'Glory days well they\'ll pass you by'],
+  ['Dancing in the Dark', 'Bruce Springsteen', 1984, '1970s', 148, 'Bb major', 'Pop Rock', 'M', 'H', 42, 'Can\'t start a fire singalong'],
+  ['Rosalita', 'Bruce Springsteen', 1973, '1970s', 160, 'Bb major', 'Rock', 'M', 'H', 22, 'Come out tonight horn epic'],
+  ['Badlands', 'Bruce Springsteen', 1978, '1970s', 118, 'A major', 'Rock', 'M', 'H', 38, 'Badlands you gotta live it every day'],
+  ['The River', 'Bruce Springsteen', 1980, '1970s', 128, 'E minor', 'Rock', 'M', 'M', 37, 'Is a dream a lie if it don\'t come true'],
+  ['Tenth Avenue Freeze-Out', 'Bruce Springsteen', 1975, '1970s', 116, 'Ab major', 'Rock', 'M', 'H', 22, 'Horn-driven E Street Band groove'],
+
+  // David Bowie (5.9h — art rock)
+  ['Heroes', 'David Bowie', 1977, '1970s', 114, 'D major', 'Art Rock', 'M', 'H', 38, 'We can be heroes singalong'],
+  ['Ziggy Stardust', 'David Bowie', 1972, '1970s', 76, 'G major', 'Glam Rock', 'M', 'H', 6, 'Ziggy played guitar'],
+  ['Starman', 'David Bowie', 1972, '1970s', 80, 'Bb major', 'Glam Rock', 'M', 'H', 38, 'There\'s a starman waiting singalong'],
+  ['Changes', 'David Bowie', 1972, '1970s', 130, 'C major', 'Art Rock', 'M', 'H', 38, 'Ch-ch-ch-changes singalong'],
+  ['Young Americans', 'David Bowie', 1975, '1970s', 108, 'F major', 'Soul', 'M', 'H', 22, 'Plastic soul Bowie'],
+  ['Suffragette City', 'David Bowie', 1972, '1970s', 146, 'A major', 'Glam Rock', 'M', 'H', 6, 'Wham bam thank you ma\'am'],
+  ['Rebel Rebel', 'David Bowie', 1974, '1970s', 126, 'D major', 'Glam Rock', 'M', 'H', 38, 'Iconic riff hot tramp singalong'],
+  ['Fame', 'David Bowie', 1975, '1970s', 120, 'E minor', 'Funk Rock', 'M', 'H', 6, 'Funk groove Lennon collab'],
+  ['Golden Years', 'David Bowie', 1976, '1970s', 120, 'Db major', 'Soul', 'M', 'H', 2, 'Come get up my baby'],
+  ['Jean Genie', 'David Bowie', 1972, '1970s', 130, 'E major', 'Glam Rock', 'M', 'H', 6, 'Riff-driven glam'],
+  ['Life on Mars', 'David Bowie', 1973, '1970s', 68, 'F major', 'Art Rock', 'M', 'H', 12, 'Dramatic piano art-pop'],
+  ['Sound and Vision', 'David Bowie', 1977, '1970s', 120, 'E major', 'Art Rock', 'M', 'M', 10, 'Berlin-era Bowie'],
+
+  // More Funk & Soul
+  ['Superstition', 'Stevie Wonder', 1972, '1970s', 100, 'Eb minor', 'Funk', 'M', 'H', 42, 'Clavinet riff everyone knows'],
+  ['Get Up I Feel Like Being a Sex Machine', 'James Brown', 1970, '1970s', 112, 'Eb major', 'Funk', 'M', 'H', 22, 'Get up offa that thing'],
+  ['Papa Don\'t Take No Mess', 'James Brown', 1974, '1970s', 116, 'E minor', 'Funk', 'M', 'H', 22, 'Heavy funk groove'],
+  ['Give Up the Funk', 'Parliament', 1976, '1970s', 108, 'Bb minor', 'Funk', 'M', 'H', 50, 'Tear the roof off the sucker'],
+  ['Flash Light', 'Parliament', 1978, '1970s', 116, 'Bb major', 'Funk', 'M', 'H', 10, 'Synth bass funk classic'],
+  ['One Nation Under a Groove', 'Funkadelic', 1978, '1970s', 112, 'E minor', 'Funk', 'M', 'H', 2, 'P-Funk party anthem'],
+  ['Maggot Brain', 'Funkadelic', 1971, '1970s', 100, 'E minor', 'Funk Rock', 'I', 'H', 4, 'Epic guitar solo Nick would love'],
+  ['You Make Me Feel Brand New', 'The Stylistics', 1974, '1970s', 64, 'Eb major', 'Soul', 'M', 'M', 9, 'Philadelphia soul'],
+  ['Rock Steady', 'Aretha Franklin', 1971, '1970s', 100, 'E minor', 'Funk', 'F', 'H', 2, 'Aretha funk groove'],
+  ['I\'ll Take You There', 'Staple Singers', 1972, '1970s', 96, 'C major', 'Soul', 'X', 'H', 42, 'I\'ll take you there singalong'],
+  ['Lean on Me', 'Bill Withers', 1972, '1970s', 80, 'C major', 'Soul', 'M', 'M', 41, 'Lean on me singalong anthem'],
+  ['Just the Two of Us', 'Grover Washington Jr', 1981, '1970s', 98, 'Db major', 'Soul', 'M', 'M', 9, 'Smooth jazz-soul classic'],
+  ['Ain\'t No Stoppin\' Us Now', 'McFadden & Whitehead', 1979, '1970s', 120, 'Ab major', 'Disco', 'M', 'H', 50, 'Philly soul anthem'],
+  ['That\'s the Way of the World', 'Earth Wind & Fire', 1975, '1970s', 96, 'Bb major', 'Soul', 'M', 'M', 17, 'EWF philosophical soul'],
+  ['Reasons', 'Earth Wind & Fire', 1975, '1970s', 72, 'Bb major', 'Soul', 'M', 'M', 9, 'EWF smooth ballad'],
+
+  // More Rock & Classic Rock
+  ['Baba O\'Riley', 'The Who', 1971, '1970s', 118, 'F major', 'Rock', 'M', 'H', 38, 'Synth intro teenage wasteland singalong'],
+  ['Won\'t Get Fooled Again', 'The Who', 1971, '1970s', 120, 'A major', 'Rock', 'M', 'H', 6, 'Scream and synth epic'],
+  ['Behind Blue Eyes', 'The Who', 1971, '1970s', 60, 'E minor', 'Rock', 'M', 'M', 37, 'No one knows what it\'s like singalong'],
+  ['Aqualung', 'Jethro Tull', 1971, '1970s', 120, 'G minor', 'Rock', 'M', 'H', 6, 'Sitting on a park bench riff'],
+  ['Locomotive Breath', 'Jethro Tull', 1971, '1970s', 120, 'E minor', 'Rock', 'M', 'H', 14, 'Flute-driven rock'],
+  ['Kashmir', 'Led Zeppelin', 1975, '1970s', 82, 'D minor', 'Rock', 'M', 'H', 6, 'Epic eastern-influenced riff'],
+  ['Immigrant Song', 'Led Zeppelin', 1970, '1970s', 113, 'F# minor', 'Rock', 'M', 'H', 6, 'Ah-ah-AH-ah Viking rock'],
+  ['Ramble On', 'Led Zeppelin', 1969, '1970s', 116, 'E major', 'Rock', 'M', 'H', 6, 'Folk-to-rock dynamics'],
+  ['Over the Hills and Far Away', 'Led Zeppelin', 1973, '1970s', 98, 'G major', 'Rock', 'M', 'H', 6, 'Acoustic to electric build'],
+  ['Good Times Bad Times', 'Led Zeppelin', 1969, '1970s', 98, 'E major', 'Rock', 'M', 'H', 6, 'Bonham drum showcase'],
+  ['Love Reign O\'er Me', 'The Who', 1973, '1970s', 120, 'C major', 'Rock', 'M', 'H', 12, 'Quadrophenia epic finale'],
+  ['Tangled Up in Blue', 'Bob Dylan', 1975, '1970s', 112, 'A major', 'Folk Rock', 'M', 'M', 5, 'Blood on the Tracks storytelling'],
+  ['Knockin on Heaven\'s Door', 'Bob Dylan', 1973, '1970s', 68, 'G major', 'Folk Rock', 'M', 'M', 37, 'Mama take this badge off singalong'],
+  ['Ramblin Man', 'Allman Brothers', 1973, '1970s', 196, 'G major', 'Rock', 'M', 'H', 6, 'Southern rock dual guitars'],
+  ['Jessica', 'Allman Brothers', 1973, '1970s', 202, 'A major', 'Rock', 'I', 'H', 6, 'Top Gear theme instrumental'],
+  ['Barracuda', 'Heart', 1977, '1970s', 135, 'E minor', 'Rock', 'F', 'H', 6, 'Wilson sisters riff monster'],
+
+  // More Pop & Country Rock
+  ['Don\'t Fear the Reaper', 'Blue Oyster Cult', 1976, '1970s', 140, 'A minor', 'Rock', 'M', 'M', 5, 'More cowbell! guitar riff'],
+  ['Burnin for You', 'Blue Oyster Cult', 1981, '1970s', 134, 'E major', 'Rock', 'M', 'H', 6, 'Home is where the heart is'],
+  ['You\'re the One That I Want', 'Grease cast', 1978, '1970s', 138, 'A major', 'Pop', 'X', 'H', 42, 'Grease movie singalong'],
+  ['Summer Nights', 'Grease cast', 1978, '1970s', 136, 'D major', 'Pop', 'X', 'H', 42, 'Tell me more tell me more singalong'],
+  ['Hopelessly Devoted to You', 'Olivia Newton-John', 1978, '1970s', 72, 'F major', 'Pop', 'F', 'M', 8, 'Grease ballad'],
+  ['Night Fever', 'Bee Gees', 1978, '1970s', 110, 'Bb major', 'Disco', 'M', 'H', 42, 'Night fever night fever'],
+  ['Don\'t Stop Til You Get Enough', 'Michael Jackson', 1979, '1970s', 112, 'B major', 'Disco', 'M', 'H', 42, 'Keep on with the force singalong'],
+  ['Lovely Day', 'Bill Withers', 1977, '1970s', 98, 'E major', 'Soul', 'M', 'H', 9, 'That held note!!! incredible'],
+  ['Pick Up the Pieces', 'Average White Band', 1974, '1970s', 108, 'F# minor', 'Funk', 'I', 'H', 18, 'Sax-driven funk instrumental'],
+  ['Killing Me Softly', 'Roberta Flack', 1973, '1970s', 95, 'F minor', 'Soul', 'F', 'M', 1, 'Strumming my pain with his fingers'],
+
+  // Australian 70s extras
+  ['Most People I Know', 'Billy Thorpe', 1972, '1970s', 130, 'E major', 'Rock', 'M', 'H', 6, 'Aussie rock legend'],
+  ['It\'s Only Rock and Roll', 'Rolling Stones', 1974, '1970s', 120, 'E major', 'Rock', 'M', 'H', 38, 'But I like it singalong'],
+  ['Sunshine of Your Love', 'Cream', 1967, '1970s', 113, 'D major', 'Rock', 'M', 'H', 6, 'Clapton riff classic'],
+  ['Saturday Night', 'Bay City Rollers', 1975, '1970s', 132, 'A major', 'Pop', 'M', 'H', 42, 'S-A-T-U-R-D-A-Y singalong'],
+  ['Gonna Fly Now', 'Bill Conti', 1977, '1970s', 96, 'Bb major', 'Soundtrack', 'I', 'H', 22, 'Rocky theme horn triumph'],
+  ['Theme from Shaft', 'Isaac Hayes', 1971, '1970s', 100, 'F# minor', 'Funk', 'M', 'H', 22, 'Wah-wah guitar classic'],
+  ['Papa Was a Rollin Stone', 'Temptations', 1972, '1970s', 105, 'Bb minor', 'Soul', 'M', 'H', 6, 'Orchestral funk masterpiece'],
+  ['Superstition', 'Stevie Wonder', 1972, '1970s', 100, 'Eb minor', 'Funk', 'M', 'H', 42, 'Very superstitious writings on the wall'],
 ];
