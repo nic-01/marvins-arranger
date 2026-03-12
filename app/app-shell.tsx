@@ -82,6 +82,12 @@ export default function AppShell({
     [songOverrides]
   );
 
+  // Track which songs have Spotify data for visual indicators
+  const enrichedIds = useMemo(
+    () => new Set(songOverrides.map(o => o.songId)),
+    [songOverrides]
+  );
+
   const handleOverridesApplied = useCallback((newOverrides: SongOverride[]) => {
     setSongOverrides(newOverrides);
   }, []);
@@ -361,6 +367,7 @@ export default function AppShell({
             deletedIds={deletedIds}
             onPreferenceChange={handlePreferenceChange}
             showPreferences
+            enrichedIds={enrichedIds}
           />
         </div>
 

@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
   }
 
   const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0', 10);
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '30', 10);
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '10', 10);
   const chunk = allSongs.slice(offset, offset + limit);
 
   const token = await getAccessToken();

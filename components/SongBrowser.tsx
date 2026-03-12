@@ -15,6 +15,7 @@ interface SongBrowserProps {
   deletedIds?: Set<string>;
   onPreferenceChange?: (songId: string, pref: SongPreference) => void;
   showPreferences?: boolean;
+  enrichedIds?: Set<string>;
 }
 
 const DECADES = ['All', '1920s', '1930s', '1940s', '1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
@@ -41,7 +42,7 @@ function getDecadeColor(decade: string): string {
 type SortField = 'year' | 'title' | 'artist' | 'bpm' | 'key' | 'energy';
 type SortDir = 'asc' | 'desc';
 
-export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, onBulkRemove, medleySongIds, starredIds, deletedIds, onPreferenceChange, showPreferences }: SongBrowserProps) {
+export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, onBulkRemove, medleySongIds, starredIds, deletedIds, onPreferenceChange, showPreferences, enrichedIds }: SongBrowserProps) {
   const [filters, setFilters] = useState<Filters>({
     decade: 'All',
     bpmMin: 0,
@@ -253,6 +254,7 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
               const inMedley = medleySongIds.has(song.id);
               const isStarred = starredIds?.has(song.id) || false;
               const isDeleted = deletedIds?.has(song.id) || false;
+              const isEnriched = enrichedIds?.has(song.id) || false;
               return (
                 <tr
                   key={song.id}
@@ -305,9 +307,14 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
                   </td>
                   <td style={{ ...styles.td, textAlign: 'left', fontWeight: 500 }}>{song.title}</td>
                   <td style={{ ...styles.td, textAlign: 'left', color: 'var(--text-secondary)' }}>{song.artist}</td>
-                  <td style={styles.td}>{song.bpm}</td>
+                  <td style={{ ...styles.td, ...(isEnriched ? { color: '#1DB954' } : {}) }}
+                    title={isEnriched ? 'Spotify verified' : undefined}
+                  >{song.bpm}</td>
                   <td style={styles.td}>
-                    <span style={styles.keyBadge} title={`Camelot: ${getCamelotCode(song.key)}`}>
+                    <span style={{
+                      ...styles.keyBadge,
+                      ...(isEnriched ? { background: 'rgba(29, 185, 84, 0.15)', color: '#1DB954' } : {}),
+                    }} title={`Camelot: ${getCamelotCode(song.key)}${isEnriched ? ' (Spotify)' : ''}`}>
                       {song.key}
                     </span>
                   </td>

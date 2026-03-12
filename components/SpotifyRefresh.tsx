@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { SongOverride } from '@/lib/types';
 
 interface SpotifyRefreshProps {
@@ -28,13 +28,52 @@ interface BatchResult {
   durationMs: number | null;
 }
 
-type RefreshState = 'idle' | 'fetching' | 'saving' | 'done' | 'error';
+type RefreshState = 'idle' | 'fetching' | 'done' | 'error';
 
-const BATCH_SIZE = 30;
+const BATCH_SIZE = 10;
+const MAX_RETRIES = 3;
+
+async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const resp = await fetch(url);
+    if (resp.ok) return resp;
+    if (resp.status === 504 || resp.status === 502 || resp.status === 503) {
+      // Transient server error — wait and retry
+      if (attempt < retries - 1) {
+        await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+        continue;
+      }
+    }
+    // Non-retryable error or final attempt
+    const data = await resp.json().catch(() => ({}));
+    throw new Error(data.error || `Spotify API error: ${resp.status}`);
+  }
+  throw new Error('Max retries exceeded');
+}
+
+function toOverride(r: BatchResult) {
+  return {
+    songId: r.id,
+    spotifyId: r.spotifyId,
+    key: r.spotifyKey,
+    bpm: r.spotifyBpm,
+    energy: r.energy,
+    danceability: r.danceability,
+    valence: r.valence,
+    acousticness: r.acousticness,
+    instrumentalness: r.instrumentalness,
+    liveness: r.liveness,
+    loudness: r.loudness,
+    speechiness: r.speechiness,
+    timeSignature: r.timeSignature,
+    durationMs: r.durationMs,
+  };
+}
 
 export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesApplied }: SpotifyRefreshProps) {
   const [state, setState] = useState<RefreshState>('idle');
   const [progress, setProgress] = useState(0);
+  const [saved, setSaved] = useState(0);
   const [stats, setStats] = useState<{
     found: number;
     notFound: number;
@@ -42,14 +81,16 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
     bpmChanges: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const allOverridesRef = useRef<SongOverride[]>([]);
 
   const runRefresh = useCallback(async () => {
     setState('fetching');
     setProgress(0);
+    setSaved(0);
     setStats(null);
     setError(null);
+    allOverridesRef.current = [];
 
-    const allResults: BatchResult[] = [];
     let offset = 0;
     let totalFound = 0;
     let totalNotFound = 0;
@@ -57,16 +98,11 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
     let totalBpmChanges = 0;
 
     try {
-      // Fetch all batches from Spotify
       while (true) {
-        const resp = await fetch(`/api/spotify/batch?offset=${offset}&limit=${BATCH_SIZE}`);
-        if (!resp.ok) {
-          const data = await resp.json().catch(() => ({}));
-          throw new Error(data.error || `Spotify API error: ${resp.status}`);
-        }
-
+        // Fetch batch with retry
+        const resp = await fetchWithRetry(`/api/spotify/batch?offset=${offset}&limit=${BATCH_SIZE}`);
         const data = await resp.json();
-        allResults.push(...data.results);
+
         totalFound += data.stats.found;
         totalNotFound += data.stats.notFound;
         totalKeyChanges += data.stats.keyChanges;
@@ -80,52 +116,41 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
           bpmChanges: totalBpmChanges,
         });
 
+        // Save this batch to DB immediately (incremental save)
+        const batchOverrides = (data.results as BatchResult[])
+          .filter((r: BatchResult) => r.spotifyId)
+          .map(toOverride);
+
+        if (batchOverrides.length > 0) {
+          const saveResp = await fetch('/api/spotify/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ overrides: batchOverrides }),
+          });
+          if (!saveResp.ok) {
+            const errData = await saveResp.json().catch(() => ({}));
+            throw new Error(errData.error || `Failed to save overrides: ${saveResp.status}`);
+          }
+          allOverridesRef.current = [...allOverridesRef.current, ...batchOverrides as SongOverride[]];
+          setSaved(allOverridesRef.current.length);
+        }
+
+        // Notify parent incrementally so UI updates live
+        onOverridesApplied(allOverridesRef.current);
+
         if (!data.hasMore) break;
         offset += BATCH_SIZE;
 
-        // Small delay between batches to be nice to Spotify
-        await new Promise(r => setTimeout(r, 200));
+        // Small delay between batches
+        await new Promise(r => setTimeout(r, 300));
       }
 
-      // Save to DB
-      setState('saving');
-      const overrides = allResults
-        .filter(r => r.spotifyId)
-        .map(r => ({
-          songId: r.id,
-          spotifyId: r.spotifyId,
-          key: r.spotifyKey,
-          bpm: r.spotifyBpm,
-          energy: r.energy,
-          danceability: r.danceability,
-          valence: r.valence,
-          acousticness: r.acousticness,
-          instrumentalness: r.instrumentalness,
-          liveness: r.liveness,
-          loudness: r.loudness,
-          speechiness: r.speechiness,
-          timeSignature: r.timeSignature,
-          durationMs: r.durationMs,
-        }));
-
-      // Send in batches of 50 to avoid request size limits
-      for (let i = 0; i < overrides.length; i += 50) {
-        const batch = overrides.slice(i, i + 50);
-        const resp = await fetch('/api/spotify/apply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ overrides: batch }),
-        });
-        if (!resp.ok) {
-          const data = await resp.json().catch(() => ({}));
-          throw new Error(data.error || `Failed to save overrides: ${resp.status}`);
-        }
-      }
-
-      // Notify parent with the new overrides
-      onOverridesApplied(overrides as SongOverride[]);
       setState('done');
     } catch (err) {
+      // Even on error, keep whatever we saved so far
+      if (allOverridesRef.current.length > 0) {
+        onOverridesApplied(allOverridesRef.current);
+      }
       setError(err instanceof Error ? err.message : String(err));
       setState('error');
     }
@@ -148,15 +173,14 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
         </button>
       )}
 
-      {(state === 'fetching' || state === 'saving') && (
+      {state === 'fetching' && (
         <div style={styles.progressArea}>
           <div style={styles.progressBar}>
             <div style={{ ...styles.progressFill, width: `${pct}%` }} />
           </div>
           <div style={styles.progressText}>
-            {state === 'fetching'
-              ? `Fetching from Spotify... ${progress}/${totalSongs} (${pct}%)`
-              : 'Saving to database...'}
+            Fetching from Spotify... {progress}/{totalSongs} ({pct}%)
+            {saved > 0 && <span style={styles.savedText}> &middot; {saved} saved</span>}
           </div>
           {stats && (
             <div style={styles.statsRow}>
@@ -187,8 +211,13 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
 
       {state === 'error' && (
         <div style={styles.errorArea}>
-          <div style={styles.errorText}>{error}</div>
-          <button style={styles.buttonSmall} onClick={() => setState('idle')}>
+          <div style={styles.errorText}>
+            {error}
+            {saved > 0 && (
+              <span style={styles.savedNote}> ({saved} songs saved before error)</span>
+            )}
+          </div>
+          <button style={styles.buttonSmall} onClick={runRefresh}>
             Retry
           </button>
         </div>
@@ -214,7 +243,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 12,
     fontWeight: 700,
-    color: '#1DB954', // Spotify green
+    color: '#1DB954',
   },
   badge: {
     fontSize: 10,
@@ -265,6 +294,13 @@ const styles: Record<string, React.CSSProperties> = {
   progressText: {
     fontSize: 11,
     color: 'var(--text-muted)',
+  },
+  savedText: {
+    color: '#1DB954',
+  },
+  savedNote: {
+    color: '#1DB954',
+    fontSize: 10,
   },
   statsRow: {
     display: 'flex',
