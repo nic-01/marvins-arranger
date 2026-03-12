@@ -296,4 +296,124 @@ export const songs2000s: SongTuple[] = [
   ['The Horses', 'Daryl Braithwaite live', 2005, '2000s', 76, 'Gb major', 'Pop Rock', 'M', 'H', 42, 'Still an anthem in the 2000s - Aussie!'],
   ['Way Out West', 'The Whitlams', 2002, '2000s', 120, 'G major', 'Pop Rock', 'M', 'M', 9, 'Piano-driven Whitlams - Aussie!'],
   ['Ten Storey Love Song', 'The Stone Roses revival', 2000, '2000s', 115, 'G major', 'Indie Rock', 'M', 'M', 5, 'Stone Roses classic'],
+
+  // === Round 3 additions ===
+
+  // LCD Soundsystem (user taste — dance-rock)
+  ['Daft Punk Is Playing at My House', 'LCD Soundsystem', 2005, '2000s', 138, 'C major', 'Dance Punk', 'M', 'H', 42, 'I\'m gonna turn you out — dance-rock anthem'],
+  ['Losing My Edge', 'LCD Soundsystem', 2002, '2000s', 132, 'D minor', 'Dance Punk', 'M', 'H', 2, 'I was there — hipster manifesto'],
+  ['All My Friends', 'LCD Soundsystem', 2007, '2000s', 120, 'D major', 'Dance Punk', 'M', 'H', 8, 'Piano build — greatest song of 2000s'],
+  ['Someone Great', 'LCD Soundsystem', 2007, '2000s', 128, 'Bb major', 'Dance Punk', 'M', 'M', 10, 'Synth-wave grief anthem'],
+  ['North American Scum', 'LCD Soundsystem', 2007, '2000s', 140, 'E minor', 'Dance Punk', 'M', 'H', 6, 'Don\'t you judge me — punk funk'],
+  ['Tribulations', 'LCD Soundsystem', 2005, '2000s', 140, 'C minor', 'Dance Punk', 'M', 'H', 2, 'Cowbell synth punk energy'],
+
+  // The Strokes deeper
+  ['Reptilia', 'The Strokes', 2004, '2000s', 167, 'D minor', 'Indie Rock', 'M', 'H', 6, 'The night\'s not over — angular guitars'],
+  ['Someday', 'The Strokes', 2002, '2000s', 103, 'A major', 'Indie Rock', 'M', 'H', 38, 'In many ways they\'ll miss the good old days — singalong'],
+  ['Hard to Explain', 'The Strokes', 2001, '2000s', 100, 'D major', 'Indie Rock', 'M', 'H', 6, 'Casablancas vocals — NYC cool'],
+  ['You Only Live Once', 'The Strokes', 2006, '2000s', 124, 'A minor', 'Indie Rock', 'M', 'H', 38, 'Some people think they\'re always right — hook'],
+  ['12:51', 'The Strokes', 2003, '2000s', 132, 'G major', 'Indie Rock', 'M', 'H', 10, 'Synth-driven Strokes — new wave nod'],
+
+  // Franz Ferdinand deeper
+  ['Do You Want To', 'Franz Ferdinand', 2005, '2000s', 145, 'E major', 'Indie Rock', 'M', 'H', 38, 'Do you want to — singalong hook'],
+  ['The Dark of the Matinee', 'Franz Ferdinand', 2004, '2000s', 136, 'D major', 'Indie Rock', 'M', 'H', 6, 'Art-school angular pop'],
+  ['No You Girls', 'Franz Ferdinand', 2009, '2000s', 140, 'C major', 'Indie Rock', 'M', 'H', 42, 'No you girls never know — singalong'],
+
+  // Arctic Monkeys
+  ['I Bet You Look Good on the Dancefloor', 'Arctic Monkeys', 2005, '2000s', 175, 'F# minor', 'Indie Rock', 'M', 'H', 38, 'Dancing to electro-pop — singalong'],
+  ['When the Sun Goes Down', 'Arctic Monkeys', 2006, '2000s', 175, 'B minor', 'Indie Rock', 'M', 'H', 6, 'Sheffield indie punk energy'],
+  ['Fluorescent Adolescent', 'Arctic Monkeys', 2007, '2000s', 153, 'D major', 'Indie Rock', 'M', 'H', 38, 'Flicking through a little book — singalong'],
+  ['Brianstorm', 'Arctic Monkeys', 2007, '2000s', 180, 'C minor', 'Indie Rock', 'M', 'H', 6, 'Frantic guitar riff opener'],
+  ['Crying Lightning', 'Arctic Monkeys', 2009, '2000s', 170, 'A minor', 'Indie Rock', 'M', 'H', 6, 'Your pastimes made of jelly'],
+
+  // Bloc Party
+  ['Helicopter', 'Bloc Party', 2005, '2000s', 140, 'D minor', 'Indie Rock', 'M', 'H', 6, 'Angular post-punk revival'],
+  ['Banquet', 'Bloc Party', 2005, '2000s', 130, 'B minor', 'Indie Rock', 'M', 'H', 6, 'Turning away from the wall — dance-punk'],
+  ['Like Eating Glass', 'Bloc Party', 2005, '2000s', 140, 'Bb minor', 'Indie Rock', 'M', 'H', 6, 'It\'s so cold in this house'],
+
+  // Interpol
+  ['Obstacle 1', 'Interpol', 2002, '2000s', 140, 'C major', 'Post Punk', 'M', 'H', 4, 'I wish I could eat the salt off your hands'],
+  ['Evil', 'Interpol', 2004, '2000s', 128, 'C major', 'Post Punk', 'M', 'H', 4, 'Rosemary — dark angular pop'],
+  ['Slow Hands', 'Interpol', 2004, '2000s', 128, 'A minor', 'Post Punk', 'M', 'H', 4, 'Driving post-punk groove'],
+
+  // Daft Punk (Discovery era — user taste)
+  ['One More Time', 'Daft Punk', 2000, '2000s', 123, 'Bb minor', 'House', 'M', 'H', 42, 'One more time — euphoric dance singalong'],
+  ['Harder Better Faster Stronger', 'Daft Punk', 2001, '2000s', 123, 'F# minor', 'House', 'I', 'H', 2, 'Vocoder robot anthem — Kanye sampled'],
+  ['Digital Love', 'Daft Punk', 2001, '2000s', 112, 'F# minor', 'House', 'I', 'H', 10, 'Synth guitar solo — disco-house'],
+  ['Something About Us', 'Daft Punk', 2003, '2000s', 100, 'D major', 'House', 'I', 'M', 8, 'It might not be the right time — smooth'],
+
+  // Justice / Ed Banger (user electronic taste)
+  ['D.A.N.C.E.', 'Justice', 2007, '2000s', 104, 'C major', 'Electro', 'I', 'H', 42, 'Do the D.A.N.C.E. — Jackson 5 vibes'],
+  ['Genesis', 'Justice', 2007, '2000s', 105, 'C minor', 'Electro', 'I', 'H', 2, 'Cross album — heavy electro'],
+  ['Phantom Pt II', 'Justice', 2007, '2000s', 120, 'D minor', 'Electro', 'I', 'H', 2, 'Synth opera — crescendo build'],
+  ['Pogo', 'Digitalism', 2007, '2000s', 132, 'E minor', 'Electro', 'M', 'H', 2, 'Electro-rock crossover'],
+
+  // Queens of the Stone Age
+  ['No One Knows', 'Queens of the Stone Age', 2002, '2000s', 172, 'E minor', 'Rock', 'M', 'H', 6, 'I journey through the desert — Grohl drums'],
+  ['Go with the Flow', 'Queens of the Stone Age', 2003, '2000s', 95, 'C major', 'Rock', 'M', 'H', 6, 'I want something good to die for'],
+  ['Little Sister', 'Queens of the Stone Age', 2005, '2000s', 168, 'A minor', 'Rock', 'M', 'H', 6, 'Hey sister — desert rock riff'],
+
+  // Muse deeper
+  ['Knights of Cydonia', 'Muse', 2006, '2000s', 138, 'E minor', 'Rock', 'M', 'H', 6, 'No one\'s gonna take me alive — epic'],
+  ['Plug In Baby', 'Muse', 2001, '2000s', 136, 'E minor', 'Rock', 'M', 'H', 6, 'Guitar riff — Muse at their tightest'],
+  ['Time Is Running Out', 'Muse', 2003, '2000s', 120, 'B minor', 'Rock', 'M', 'H', 38, 'I think I\'m drowning — singalong'],
+  ['Hysteria', 'Muse', 2003, '2000s', 94, 'A minor', 'Rock', 'M', 'H', 6, 'Bassline of the decade — Wolstenholme'],
+  ['Starlight', 'Muse', 2006, '2000s', 120, 'Bb major', 'Rock', 'M', 'H', 38, 'Far away — singalong pop-rock'],
+
+  // The Rapture / Dance-punk
+  ['House of Jealous Lovers', 'The Rapture', 2003, '2000s', 134, 'C major', 'Dance Punk', 'M', 'H', 2, 'DFA Records — dance floor indie'],
+  ['Heads Will Roll', 'Yeah Yeah Yeahs', 2009, '2000s', 130, 'A minor', 'Dance Punk', 'F', 'H', 2, 'Off with your head — A-Trak remix'],
+
+  // Arcade Fire
+  ['Wake Up', 'Arcade Fire', 2004, '2000s', 128, 'C major', 'Indie Rock', 'X', 'H', 42, 'Lightning crashes singalong — epic build'],
+  ['Rebellion (Lies)', 'Arcade Fire', 2004, '2000s', 132, 'F major', 'Indie Rock', 'X', 'H', 6, 'Sleeping is giving in — driving indie'],
+  ['No Cars Go', 'Arcade Fire', 2007, '2000s', 146, 'G major', 'Indie Rock', 'X', 'H', 42, 'We know a place — euphoric singalong'],
+  ['Ready to Start', 'Arcade Fire', 2010, '2000s', 145, 'F minor', 'Indie Rock', 'M', 'H', 6, 'Suburbs era energy'],
+
+  // Modest Mouse / Death Cab / Indie deeper
+  ['Float On', 'Modest Mouse', 2004, '2000s', 104, 'A major', 'Indie Rock', 'M', 'H', 38, 'We\'ll all float on OK — singalong'],
+  ['Soul Meets Body', 'Death Cab for Cutie', 2005, '2000s', 115, 'E major', 'Indie Rock', 'M', 'M', 5, 'I want to live where soul meets body'],
+  ['Such Great Heights', 'The Postal Service', 2003, '2000s', 120, 'C major', 'Indie Pop', 'M', 'H', 10, 'I am thinking it\'s a sign — electronic indie'],
+  ['Two Weeks', 'Grizzly Bear', 2009, '2000s', 120, 'Bb major', 'Indie Rock', 'M', 'M', 8, 'Vocal harmonies — indie pop gem'],
+
+  // Vampire Weekend
+  ['A-Punk', 'Vampire Weekend', 2008, '2000s', 174, 'D major', 'Indie Pop', 'M', 'H', 6, 'Frenetic guitar — afro-pop indie'],
+  ['Oxford Comma', 'Vampire Weekend', 2008, '2000s', 110, 'D major', 'Indie Pop', 'M', 'H', 6, 'Who gives a f about an Oxford comma'],
+  ['Cape Cod Kwassa Kwassa', 'Vampire Weekend', 2008, '2000s', 128, 'G major', 'Indie Pop', 'M', 'H', 4, 'Peter Gabriel influence'],
+
+  // The Hives / Garage rock
+  ['Hate to Say I Told You So', 'The Hives', 2000, '2000s', 156, 'B minor', 'Garage Rock', 'M', 'H', 6, 'Howlin\' Pelle energy — punk garage'],
+  ['Fell in Love with a Girl', 'The White Stripes', 2002, '2000s', 190, 'B major', 'Garage Rock', 'M', 'H', 4, 'Lego video — 2-minute punk blues'],
+  ['Icky Thump', 'The White Stripes', 2007, '2000s', 200, 'B minor', 'Rock', 'M', 'H', 6, 'Heavy riff — White Stripes peak'],
+
+  // The Avalanches / Cut Copy / Australian electronic (user taste)
+  ['Since I Left You', 'The Avalanches', 2000, '2000s', 112, 'Eb major', 'Electronic', 'I', 'H', 42, 'Sample symphony — dance classic — Aussie'],
+  ['Hearts on Fire', 'Cut Copy', 2008, '2000s', 128, 'C major', 'Synth Pop', 'M', 'H', 42, 'Hearts on fire tonight — synth-pop anthem — Aussie'],
+  ['Lights & Music', 'Cut Copy', 2008, '2000s', 120, 'D major', 'Synth Pop', 'M', 'H', 10, 'Electronic indie-dance — Aussie'],
+  ['My People', 'The Presets', 2008, '2000s', 130, 'F minor', 'Electro', 'M', 'H', 2, 'My people right here right now — Aussie electro'],
+  ['This Boy\'s in Love', 'The Presets', 2008, '2000s', 128, 'Bb minor', 'Electro', 'M', 'H', 2, 'Dark electro-pop — Aussie'],
+
+  // Australian rock deeper
+  ['Black Fingernails Red Wine', 'Eskimo Joe', 2006, '2000s', 116, 'D major', 'Indie Rock', 'M', 'M', 5, 'Perth indie-rock — Aussie'],
+  ['Not Pretty Enough', 'Kasey Chambers', 2001, '2000s', 108, 'G major', 'Country', 'F', 'M', 37, 'Am I not pretty enough — Aussie singalong'],
+  ['Nosebleed Section', 'Hilltop Hoods', 2003, '2000s', 96, 'A minor', 'Hip Hop', 'M', 'H', 2, 'Oz hip-hop anthem — Adelaide'],
+  ['1955', 'Hilltop Hoods', 2006, '2000s', 80, 'G major', 'Hip Hop', 'M', 'M', 9, 'Montaigne collab — keys and groove — Aussie'],
+  ['Elephants', 'Them Crooked Vultures', 2009, '2000s', 128, 'A minor', 'Rock', 'M', 'H', 6, 'Grohl/Homme/Jones supergroup'],
+  ['The Cat Empire', 'Hello Hello', 2003, '2000s', 130, 'G major', 'Funk', 'M', 'H', 50, 'Horn party funk-pop — Aussie'],
+
+  // More crowd-pleasers
+  ['Maps', 'Maroon 5', 2014, '2000s', 115, 'Bb major', 'Pop', 'M', 'H', 2, 'Following the map that leads to you'],
+  ['Treasure', 'Bruno Mars', 2013, '2000s', 116, 'Eb major', 'Pop', 'M', 'H', 42, 'Treasure that is what you are — funk singalong'],
+  ['Lisztomania', 'Phoenix', 2009, '2000s', 148, 'E major', 'Indie Rock', 'M', 'H', 42, 'Think less but see it grow — singalong'],
+  ['If You Leave Me Now', 'Chicago revival', 2000, '2000s', 68, 'Bb major', 'Pop', 'M', 'M', 17, 'Horn-driven love classic'],
+  ['Grace Kelly', 'Mika', 2007, '2000s', 155, 'Ab major', 'Pop', 'M', 'H', 42, 'I could be brown I could be blue — singalong'],
+  ['Technologic', 'Daft Punk', 2005, '2000s', 122, 'Eb minor', 'Electro', 'I', 'H', 2, 'Buy it use it break it fix it — robot vocoder'],
+  ['Galvanize', 'Chemical Brothers', 2005, '2000s', 130, 'C minor', 'Electronic', 'M', 'H', 2, 'Push the button — big beat revival'],
+  ['Weapon of Choice', 'Fatboy Slim', 2001, '2000s', 118, 'G minor', 'Electronic', 'M', 'H', 2, 'Christopher Walken dancing — funk sample'],
+  ['Get Ur Freak On', 'Missy Elliott', 2001, '2000s', 96, 'E minor', 'Hip Hop', 'F', 'H', 2, 'Timbaland bhangra beat — iconic'],
+  ['Work It', 'Missy Elliott', 2002, '2000s', 104, 'Bb minor', 'Hip Hop', 'F', 'H', 2, 'Is it worth it let me work it — reverse vocal hook'],
+  ['Dani California', 'RHCP', 2006, '2000s', 96, 'A minor', 'Rock', 'M', 'H', 38, 'Getting born in the state of Mississippi — singalong'],
+  ['Rebellion', 'Arcade Fire', 2005, '2000s', 132, 'E minor', 'Indie Rock', 'X', 'H', 6, 'Every generation throws a hero up the pop charts'],
+  ['Paper Planes', 'M.I.A.', 2008, '2000s', 120, 'A minor', 'Hip Hop', 'F', 'H', 42, 'All I wanna do is — bang bang bang — cash register'],
+  ['Rehab', 'Amy Winehouse', 2007, '2000s', 145, 'C major', 'Soul', 'F', 'H', 50, 'They tried to make me go — no no no horn-driven'],
 ];

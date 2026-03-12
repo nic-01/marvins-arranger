@@ -361,4 +361,129 @@ export const songs1990s: SongTuple[] = [
   ['Holy Grail', 'Hunters & Collectors', 1992, '1990s', 96, 'E minor', 'Rock', 'M', 'H', 50, 'Aussie pub rock - horns!'],
   ['Throw Your Arms Around Me', 'Hunters & Collectors', 1990, '1990s', 72, 'G major', 'Rock', 'M', 'M', 37, 'Aussie wedding classic singalong'],
   ['Under the Milky Way', 'The Church', 1990, '1990s', 81, 'A minor', 'Rock', 'M', 'M', 5, 'Wish I knew what you were looking for'],
+
+  // === Round 3 additions ===
+
+  // More RATM (user 16h listening!)
+  ['Bombtrack', 'RATM', 1992, '1990s', 80, 'E minor', 'Rap Metal', 'M', 'H', 6, 'Burn burn yes ya gonna burn'],
+  ['Guerrilla Radio', 'RATM', 1999, '1990s', 104, 'D minor', 'Rap Metal', 'M', 'H', 6, 'Lights out — Morello riff machine'],
+  ['Sleep Now in the Fire', 'RATM', 1999, '1990s', 92, 'D major', 'Rap Metal', 'M', 'H', 6, 'Wall Street video — heavy groove'],
+  ['Know Your Enemy', 'RATM', 1992, '1990s', 84, 'D minor', 'Rap Metal', 'M', 'H', 6, 'Know your enemy! — mosh pit anthem'],
+  ['Testify', 'RATM', 1999, '1990s', 80, 'E minor', 'Rap Metal', 'M', 'H', 6, 'Who controls the past now'],
+  ['Freedom', 'RATM', 1992, '1990s', 96, 'E minor', 'Rap Metal', 'M', 'H', 6, 'Freedom! yeah right — closer'],
+
+  // More RHCP (user 21h listening!)
+  ['Soul to Squeeze', 'RHCP', 1993, '1990s', 84, 'F major', 'Rock', 'M', 'M', 5, 'Coneheads B-side — fan favorite'],
+  ['Otherside', 'RHCP', 1999, '1990s', 123, 'A minor', 'Rock', 'M', 'H', 5, 'How long how long will I slide'],
+  ['Around the World', 'RHCP', 1999, '1990s', 112, 'E minor', 'Funk Rock', 'M', 'H', 6, 'Flea bass showcase'],
+  ['Aeroplane', 'RHCP', 1995, '1990s', 80, 'E minor', 'Funk Rock', 'M', 'H', 6, 'I like pleasure spiked with pain'],
+  ['My Friends', 'RHCP', 1995, '1990s', 72, 'D major', 'Rock', 'M', 'M', 5, 'Acoustic-driven — melancholic'],
+  ['Breaking the Girl', 'RHCP', 1992, '1990s', 60, 'A minor', 'Rock', 'M', 'M', 4, 'Percussion breakdown — moody'],
+
+  // More Foo Fighters (user 11h listening)
+  ['Monkey Wrench', 'Foo Fighters', 1997, '1990s', 174, 'B major', 'Rock', 'M', 'H', 6, 'One last thing before I quit'],
+  ['Big Me', 'Foo Fighters', 1996, '1990s', 120, 'E major', 'Rock', 'M', 'M', 5, 'Sweet acoustic-ish Foo'],
+  ['I\'ll Stick Around', 'Foo Fighters', 1995, '1990s', 168, 'D major', 'Rock', 'M', 'H', 6, 'Debut era energy'],
+
+  // Radiohead deeper
+  ['Paranoid Android', 'Radiohead', 1997, '1990s', 82, 'C minor', 'Alt Rock', 'M', 'H', 4, 'Multi-section epic — rain down'],
+  ['No Surprises', 'Radiohead', 1997, '1990s', 76, 'F major', 'Alt Rock', 'M', 'L', 8, 'Glockenspiel lullaby — dark lyrics'],
+  ['Fake Plastic Trees', 'Radiohead', 1995, '1990s', 74, 'A major', 'Alt Rock', 'M', 'M', 5, 'She looks like the real thing'],
+  ['Lucky', 'Radiohead', 1997, '1990s', 104, 'E minor', 'Alt Rock', 'M', 'H', 4, 'Pull me out of the aircrash'],
+  ['Just', 'Radiohead', 1995, '1990s', 100, 'A major', 'Alt Rock', 'M', 'H', 6, 'You do it to yourself — riff attack'],
+
+  // Björk (user taste — art-pop)
+  ['Army of Me', 'Björk', 1995, '1990s', 104, 'C minor', 'Electronic', 'F', 'H', 10, 'Industrial art-pop — Tank Girl'],
+  ['Hyperballad', 'Björk', 1996, '1990s', 132, 'D major', 'Electronic', 'F', 'H', 10, 'Euphoric build — dawn electronics'],
+  ['It\'s Oh So Quiet', 'Björk', 1995, '1990s', 76, 'Eb major', 'Jazz Pop', 'F', 'H', 50, 'Big band — SHHHH! — horn explosion'],
+  ['Human Behaviour', 'Björk', 1993, '1990s', 116, 'Eb major', 'Art Pop', 'F', 'H', 6, 'If you ever get close to a human'],
+
+  // Trip-Hop / Electronic (user taste)
+  ['Glory Box', 'Portishead', 1994, '1990s', 76, 'D minor', 'Trip Hop', 'F', 'M', 4, 'Give me a reason — guitar sample'],
+  ['Sour Times', 'Portishead', 1994, '1990s', 76, 'E minor', 'Trip Hop', 'F', 'M', 4, 'Nobody loves me — spy soundtrack'],
+  ['Wandering Star', 'Portishead', 1994, '1990s', 60, 'Bb minor', 'Trip Hop', 'F', 'L', 2, 'Dark atmospheric trip-hop'],
+  ['Unfinished Sympathy', 'Massive Attack', 1991, '1990s', 100, 'D minor', 'Trip Hop', 'F', 'H', 9, 'Orchestral trip-hop — one-take video'],
+  ['Teardrop', 'Massive Attack', 1998, '1990s', 76, 'A minor', 'Trip Hop', 'F', 'M', 8, 'House M.D. theme — harpsichord'],
+  ['Around the World', 'Daft Punk', 1997, '1990s', 122, 'Bb minor', 'House', 'I', 'H', 2, 'Around the world x144 — dance classic'],
+  ['Da Funk', 'Daft Punk', 1997, '1990s', 114, 'C minor', 'House', 'I', 'H', 2, 'Robotic funk — dog walking video'],
+  ['Block Rockin Beats', 'Chemical Brothers', 1997, '1990s', 110, 'E minor', 'Electronic', 'M', 'H', 2, 'Big beat breakbeat classic'],
+  ['Hey Boy Hey Girl', 'Chemical Brothers', 1999, '1990s', 130, 'F minor', 'Electronic', 'X', 'H', 2, 'Superstar DJs here we go'],
+  ['Windowlicker', 'Aphex Twin', 1999, '1990s', 136, 'E minor', 'Electronic', 'I', 'H', 2, 'Warped genius — twisted dance'],
+
+  // No Doubt
+  ['Don\'t Speak', 'No Doubt', 1996, '1990s', 76, 'C minor', 'Pop Rock', 'F', 'M', 37, 'You and me — singalong heartbreak'],
+  ['Just a Girl', 'No Doubt', 1995, '1990s', 126, 'F major', 'Ska Pop', 'F', 'H', 42, 'I\'m just a girl — punk-pop singalong'],
+  ['Spiderweb', 'No Doubt', 1995, '1990s', 88, 'D major', 'Ska Pop', 'F', 'H', 22, 'Horn-driven ska-pop'],
+
+  // Weezer
+  ['Buddy Holly', 'Weezer', 1994, '1990s', 118, 'E major', 'Alt Rock', 'M', 'H', 38, 'Woo-ee-oo — power pop singalong'],
+  ['Say It Ain\'t So', 'Weezer', 1994, '1990s', 76, 'C minor', 'Alt Rock', 'M', 'H', 6, 'Dear daddy — quiet-loud dynamic'],
+  ['Undone (The Sweater Song)', 'Weezer', 1994, '1990s', 104, 'E minor', 'Alt Rock', 'M', 'M', 4, 'If you want to destroy my sweater'],
+  ['Hash Pipe', 'Weezer', 2001, '1990s', 128, 'E minor', 'Alt Rock', 'M', 'H', 6, 'Crunchy riff — Weezer rocks hard'],
+
+  // Alanis / Sheryl / Female alt-rock
+  ['You Oughta Know', 'Alanis Morissette', 1995, '1990s', 105, 'F# minor', 'Alt Rock', 'F', 'H', 6, 'Angry breakup anthem — Flea on bass'],
+  ['Ironic', 'Alanis Morissette', 1996, '1990s', 82, 'F# major', 'Pop Rock', 'F', 'M', 37, 'Rain on your wedding day singalong'],
+  ['Hand in My Pocket', 'Alanis Morissette', 1995, '1990s', 92, 'G major', 'Rock', 'F', 'M', 17, 'I\'m broke but I\'m happy — harmonica'],
+  ['All I Wanna Do', 'Sheryl Crow', 1994, '1990s', 120, 'C major', 'Pop Rock', 'F', 'H', 38, 'All I wanna do is have some fun singalong'],
+  ['If It Makes You Happy', 'Sheryl Crow', 1996, '1990s', 138, 'G major', 'Rock', 'F', 'H', 6, 'If it makes you happy it can\'t be that bad'],
+
+  // Jeff Buckley
+  ['Grace', 'Jeff Buckley', 1994, '1990s', 132, 'E minor', 'Rock', 'M', 'H', 4, 'Soaring vocals — epic guitar'],
+  ['Last Goodbye', 'Jeff Buckley', 1994, '1990s', 116, 'D major', 'Rock', 'M', 'H', 4, 'Kiss me please kiss me'],
+  ['Hallelujah', 'Jeff Buckley', 1994, '1990s', 52, 'C major', 'Folk', 'M', 'L', 33, 'Cohen cover — definitive version singalong'],
+
+  // Nine Inch Nails (industrial edge)
+  ['Closer', 'Nine Inch Nails', 1994, '1990s', 96, 'F# minor', 'Industrial', 'M', 'H', 10, 'Dark synth bass — you know the hook'],
+  ['Head Like a Hole', 'Nine Inch Nails', 1989, '1990s', 113, 'E minor', 'Industrial', 'M', 'H', 6, 'God money — industrial anthem'],
+  ['Hurt', 'Nine Inch Nails', 1994, '1990s', 72, 'B minor', 'Industrial', 'M', 'L', 4, 'I hurt myself today — raw ballad'],
+
+  // Garbage / Alt-rock 90s
+  ['Stupid Girl', 'Garbage', 1996, '1990s', 120, 'E minor', 'Alt Rock', 'F', 'H', 6, 'Shirley Manson attitude'],
+  ['Only Happy When It Rains', 'Garbage', 1996, '1990s', 148, 'E minor', 'Alt Rock', 'F', 'H', 6, 'Pour your misery down on me'],
+  ['#1 Crush', 'Garbage', 1996, '1990s', 100, 'D minor', 'Alt Rock', 'F', 'M', 4, 'Romeo + Juliet soundtrack'],
+
+  // Britpop / UK deeper
+  ['Disco 2000', 'Pulp', 1995, '1990s', 154, 'D major', 'Britpop', 'M', 'H', 42, 'Won\'t you meet me at the fountain singalong'],
+  ['Babies', 'Pulp', 1994, '1990s', 136, 'A major', 'Britpop', 'M', 'H', 5, 'Hiding in the wardrobe — Jarvis storytelling'],
+  ['Sorted for Es and Wizz', 'Pulp', 1995, '1990s', 120, 'E major', 'Britpop', 'M', 'H', 5, 'Festival anthem — rave nostalgia'],
+  ['The Beautiful Ones', 'Suede', 1996, '1990s', 128, 'Bb major', 'Britpop', 'M', 'H', 6, 'High-octane art-glam'],
+  ['Trash', 'Suede', 1996, '1990s', 116, 'G major', 'Britpop', 'M', 'H', 6, 'We\'re trash you and me'],
+  ['Animal Nitrate', 'Suede', 1993, '1990s', 132, 'E major', 'Britpop', 'M', 'H', 6, 'Glam-rock revivalists'],
+  ['Every You Every Me', 'Placebo', 1998, '1990s', 128, 'A minor', 'Alt Rock', 'M', 'H', 6, 'Sucker love — Cruel Intentions'],
+  ['Pure Morning', 'Placebo', 1998, '1990s', 112, 'F minor', 'Alt Rock', 'M', 'H', 6, 'A friend in need\'s a friend indeed'],
+  ['A Design for Life', 'Manic Street Preachers', 1996, '1990s', 108, 'C major', 'Britpop', 'M', 'H', 38, 'We don\'t talk about love — anthemic singalong'],
+  ['If You Tolerate This', 'Manic Street Preachers', 1998, '1990s', 112, 'Ab major', 'Britpop', 'M', 'H', 5, 'Then your children will be next'],
+  ['Alright', 'Supergrass', 1995, '1990s', 128, 'D major', 'Britpop', 'M', 'H', 42, 'We are young — feel-good singalong'],
+  ['Pumping on Your Stereo', 'Supergrass', 1999, '1990s', 128, 'G major', 'Britpop', 'M', 'H', 6, 'Frantic pop energy'],
+  ['Why Does It Always Rain on Me', 'Travis', 1999, '1990s', 76, 'D major', 'Britpop', 'M', 'M', 37, 'Glastonbury singalong anthem'],
+  ['Driftwood', 'Travis', 1999, '1990s', 84, 'Bb major', 'Pop Rock', 'M', 'M', 5, 'Everything is open nothing is set in stone'],
+  ['Girl from Mars', 'Ash', 1995, '1990s', 156, 'D major', 'Punk', 'M', 'H', 6, 'Northern Irish punk-pop'],
+  ['Brimful of Asha', 'Cornershop', 1997, '1990s', 94, 'A major', 'Indie', 'M', 'H', 42, 'Everybody needs a bosom for a pillow — Fatboy Slim remix'],
+  ['Female of the Species', 'Space', 1996, '1990s', 128, 'D minor', 'Britpop', 'M', 'H', 6, 'More deadly than the male'],
+  ['Connection', 'Elastica', 1995, '1990s', 120, 'C major', 'Britpop', 'F', 'H', 6, 'Post-punk Britpop — Wire influence'],
+  ['The Bartender and the Thief', 'Stereophonics', 1998, '1990s', 148, 'A major', 'Rock', 'M', 'H', 6, 'Welsh rock energy'],
+
+  // R&B / Neo-soul / Hip-hop deeper
+  ['Free Your Mind', 'En Vogue', 1992, '1990s', 104, 'D minor', 'R&B', 'F', 'H', 42, 'Free your mind — rock-meets-R&B singalong'],
+  ['My Lovin (You\'re Never Gonna Get It)', 'En Vogue', 1992, '1990s', 103, 'Bb major', 'R&B', 'F', 'H', 2, 'Never gonna get it — vocal hook'],
+  ['Everything Is Everything', 'Lauryn Hill', 1998, '1990s', 100, 'Bb major', 'R&B', 'F', 'M', 9, 'Neo-soul — keys driven'],
+  ['On & On', 'Erykah Badu', 1997, '1990s', 100, 'Db major', 'Neo Soul', 'F', 'M', 1, 'My cipher keeps moving like a rolling stone'],
+  ['The Rain (Supa Dupa Fly)', 'Missy Elliott', 1997, '1990s', 92, 'F minor', 'Hip Hop', 'F', 'H', 2, 'Beep beep — Timbaland production'],
+  ['Doo Wop (That Thing)', 'Lauryn Hill', 1998, '1990s', 96, 'G minor', 'Hip Hop', 'F', 'H', 3, 'Lauryn Hill — neo-soul hip-hop'],
+  ['Changes', 'Tupac', 1998, '1990s', 96, 'C major', 'Hip Hop', 'M', 'M', 33, 'That\'s just the way it is — Bruce Hornsby sample singalong'],
+  ['Shook Ones Pt II', 'Mobb Deep', 1995, '1990s', 96, 'Db minor', 'Hip Hop', 'M', 'H', 2, 'I got you stuck off the realness'],
+
+  // Australian 90s deeper
+  ['Living in the 70s', 'Skyhooks', 1990, '1990s', 120, 'A major', 'Rock', 'M', 'H', 38, 'Oz glam-rock revival singalong'],
+  ['Polyester Girl', 'Regurgitator', 1997, '1990s', 116, 'A major', 'Alt Rock', 'M', 'H', 10, 'Synth-punk Oz classic'],
+  ['Berlin Chair', 'You Am I', 1995, '1990s', 116, 'G major', 'Rock', 'M', 'H', 6, 'Tim Rogers power-pop'],
+  ['Heavy Heart', 'You Am I', 1996, '1990s', 100, 'G major', 'Rock', 'M', 'M', 5, 'Oz alt-rock ballad'],
+  ['Chemical Heart', 'Grinspoon', 1997, '1990s', 100, 'E minor', 'Rock', 'M', 'H', 6, 'Lismore grunge — Triple J anthem'],
+  ['Prisoner of Society', 'The Living End', 1997, '1990s', 180, 'D major', 'Punk', 'M', 'H', 38, 'We don\'t need no one to tell us — singalong'],
+  ['Second Solution', 'The Living End', 1998, '1990s', 176, 'B minor', 'Punk', 'M', 'H', 6, 'Rockabilly punk energy'],
+  ['Leaving Home', 'Jebediah', 1997, '1990s', 176, 'C major', 'Alt Rock', 'M', 'H', 6, 'Perth indie pop-punk'],
+  ['Blow Up the Pokies', 'The Whitlams', 2000, '1990s', 120, 'G major', 'Pop Rock', 'M', 'M', 9, 'Australian social commentary — piano'],
+  ['Niche in His Chest', 'Something for Kate', 1999, '1990s', 100, 'D minor', 'Alt Rock', 'M', 'M', 4, 'Oz indie introspection'],
+  ['Captain', 'Something for Kate', 1999, '1990s', 128, 'E major', 'Alt Rock', 'M', 'H', 4, 'Paul Dempsey vocals'],
 ];
