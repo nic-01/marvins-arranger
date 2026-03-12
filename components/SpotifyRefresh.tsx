@@ -30,7 +30,7 @@ interface BatchResult {
 
 type RefreshState = 'idle' | 'fetching' | 'done' | 'error';
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 25;
 const MAX_RETRIES = 4;
 
 /** Fetch with retry — returns null if all retries fail (instead of throwing) */

@@ -122,24 +122,31 @@ export async function GET(req: NextRequest) {
   }
 
   const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0', 10);
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '10', 10);
+  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '25', 10);
   const chunk = allSongs.slice(offset, offset + limit);
 
   const token = await getAccessToken();
 
-  // Search for each track
+  // Search for all tracks in parallel (5 at a time to respect rate limits)
   const spotifyIds: Array<{ songId: string; spotifyId: string }> = [];
   const notFound: string[] = [];
 
-  for (const song of chunk) {
-    const sid = await searchTrack(token, song.title, song.artist);
-    if (sid) {
-      spotifyIds.push({ songId: song.id, spotifyId: sid });
-    } else {
-      notFound.push(song.id);
+  const CONCURRENCY = 5;
+  for (let i = 0; i < chunk.length; i += CONCURRENCY) {
+    const batch = chunk.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (song) => {
+        const sid = await searchTrack(token, song.title, song.artist);
+        return { song, sid };
+      })
+    );
+    for (const { song, sid } of results) {
+      if (sid) {
+        spotifyIds.push({ songId: song.id, spotifyId: sid });
+      } else {
+        notFound.push(song.id);
+      }
     }
-    // Small delay
-    await new Promise(r => setTimeout(r, 80));
   }
 
   // Batch fetch audio features (full data)
