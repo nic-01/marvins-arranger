@@ -30,7 +30,20 @@ interface SingleResult {
 
 type RefreshState = 'idle' | 'fetching' | 'done';
 
-const SAVE_EVERY = 20; // save to DB every N songs
+const SAVE_EVERY = 20;
+const FETCH_TIMEOUT = 15_000; // 15s max per song
+
+/** fetch with a timeout — rejects if no response within ms */
+function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+/** Yield to the browser so React can re-render and the UI stays responsive */
+function yieldToUI(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
 
 export default function SpotifyRefresh({ songs, overrideCount, onOverridesApplied }: SpotifyRefreshProps) {
   const [state, setState] = useState<RefreshState>('idle');
@@ -60,7 +73,6 @@ export default function SpotifyRefresh({ songs, overrideCount, onOverridesApplie
         onOverridesApplied(allOverridesRef.current);
       }
     } catch {
-      // Save failed — put them back for next flush
       pendingRef.current = [...batch, ...pendingRef.current];
     }
   }, [onOverridesApplied]);
@@ -73,6 +85,9 @@ export default function SpotifyRefresh({ songs, overrideCount, onOverridesApplie
     allOverridesRef.current = [];
     pendingRef.current = [];
 
+    // Yield so React renders the "fetching" state before we start the loop
+    await yieldToUI();
+
     let found = 0;
     let notFound = 0;
     let skipped = 0;
@@ -82,53 +97,52 @@ export default function SpotifyRefresh({ songs, overrideCount, onOverridesApplie
 
       try {
         const params = new URLSearchParams({ id: song.id, title: song.title, artist: song.artist });
-        const resp = await fetch(`/api/spotify/single?${params}`);
+        const resp = await fetchWithTimeout(`/api/spotify/single?${params}`, FETCH_TIMEOUT);
 
         if (resp.status === 429) {
-          // Rate limited — wait and retry this song
-          const data: SingleResult = await resp.json();
-          const wait = (data.retryAfter || 3) * 1000;
+          const data: SingleResult = await resp.json().catch(() => ({ id: song.id, found: false, retryAfter: 5 }));
+          const wait = (data.retryAfter || 5) * 1000;
           await new Promise(r => setTimeout(r, wait));
-          i--; // retry
+          i--; // retry this song
           continue;
         }
 
         if (!resp.ok) {
           skipped++;
-          setProgress(i + 1);
-          setStats({ found, notFound, skipped });
-          continue;
-        }
-
-        const data: SingleResult = await resp.json();
-
-        if (data.found && data.spotifyId) {
-          found++;
-          pendingRef.current.push({
-            songId: data.id,
-            spotifyId: data.spotifyId,
-            key: data.spotifyKey ?? null,
-            bpm: data.spotifyBpm ?? null,
-            energy: data.energy ?? null,
-            danceability: data.danceability ?? null,
-            valence: data.valence ?? null,
-            acousticness: data.acousticness ?? null,
-            instrumentalness: data.instrumentalness ?? null,
-            liveness: data.liveness ?? null,
-            loudness: data.loudness ?? null,
-            speechiness: data.speechiness ?? null,
-            timeSignature: data.timeSignature ?? null,
-            durationMs: data.durationMs ?? null,
-          } as SongOverride);
         } else {
-          notFound++;
+          const data: SingleResult = await resp.json();
+
+          if (data.found && data.spotifyId) {
+            found++;
+            pendingRef.current.push({
+              songId: data.id,
+              spotifyId: data.spotifyId,
+              key: data.spotifyKey ?? null,
+              bpm: data.spotifyBpm ?? null,
+              energy: data.energy ?? null,
+              danceability: data.danceability ?? null,
+              valence: data.valence ?? null,
+              acousticness: data.acousticness ?? null,
+              instrumentalness: data.instrumentalness ?? null,
+              liveness: data.liveness ?? null,
+              loudness: data.loudness ?? null,
+              speechiness: data.speechiness ?? null,
+              timeSignature: data.timeSignature ?? null,
+              durationMs: data.durationMs ?? null,
+            } as SongOverride);
+          } else {
+            notFound++;
+          }
         }
       } catch {
+        // Timeout or network error — skip this song
         skipped++;
       }
 
+      // Update progress + yield to React on every song
       setProgress(i + 1);
       setStats({ found, notFound, skipped });
+      await yieldToUI();
 
       // Flush to DB periodically
       if (pendingRef.current.length >= SAVE_EVERY) {
