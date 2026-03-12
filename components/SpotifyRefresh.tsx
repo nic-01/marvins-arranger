@@ -31,24 +31,33 @@ interface BatchResult {
 type RefreshState = 'idle' | 'fetching' | 'done' | 'error';
 
 const BATCH_SIZE = 10;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 4;
 
-async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
+/** Fetch with retry — returns null if all retries fail (instead of throwing) */
+async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response | null> {
   for (let attempt = 0; attempt < retries; attempt++) {
-    const resp = await fetch(url);
-    if (resp.ok) return resp;
-    if (resp.status === 504 || resp.status === 502 || resp.status === 503) {
-      // Transient server error — wait and retry
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) return resp;
+      if (resp.status === 504 || resp.status === 502 || resp.status === 503 || resp.status === 429) {
+        // Transient — wait with exponential backoff and retry
+        const wait = resp.status === 429
+          ? parseInt(resp.headers.get('retry-after') || '5', 10) * 1000
+          : (attempt + 1) * 3000;
+        if (attempt < retries - 1) {
+          await new Promise(r => setTimeout(r, wait));
+          continue;
+        }
+      }
+    } catch {
+      // Network error (fetch itself failed) — retry
       if (attempt < retries - 1) {
-        await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+        await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
         continue;
       }
     }
-    // Non-retryable error or final attempt
-    const data = await resp.json().catch(() => ({}));
-    throw new Error(data.error || `Spotify API error: ${resp.status}`);
   }
-  throw new Error('Max retries exceeded');
+  return null; // All retries exhausted — skip this batch
 }
 
 function toOverride(r: BatchResult) {
@@ -79,6 +88,7 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
     notFound: number;
     keyChanges: number;
     bpmChanges: number;
+    skippedBatches: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const allOverridesRef = useRef<SongOverride[]>([]);
@@ -96,27 +106,36 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
     let totalNotFound = 0;
     let totalKeyChanges = 0;
     let totalBpmChanges = 0;
+    let skippedBatches = 0;
+    let total = totalSongs;
 
-    try {
-      while (true) {
-        // Fetch batch with retry
+    // Never-throw loop: skip failed batches, keep going
+    while (offset < total) {
+      try {
         const resp = await fetchWithRetry(`/api/spotify/batch?offset=${offset}&limit=${BATCH_SIZE}`);
+
+        if (!resp) {
+          // All retries failed for this batch — skip it
+          skippedBatches++;
+          offset += BATCH_SIZE;
+          setProgress(Math.min(offset, total));
+          setStats({ found: totalFound, notFound: totalNotFound, keyChanges: totalKeyChanges, bpmChanges: totalBpmChanges, skippedBatches });
+          await new Promise(r => setTimeout(r, 5000)); // longer pause after failure
+          continue;
+        }
+
         const data = await resp.json();
+        total = data.total; // update with real total from server
 
         totalFound += data.stats.found;
         totalNotFound += data.stats.notFound;
         totalKeyChanges += data.stats.keyChanges;
         totalBpmChanges += data.stats.bpmChanges;
 
-        setProgress(Math.min(offset + BATCH_SIZE, data.total));
-        setStats({
-          found: totalFound,
-          notFound: totalNotFound,
-          keyChanges: totalKeyChanges,
-          bpmChanges: totalBpmChanges,
-        });
+        setProgress(Math.min(offset + BATCH_SIZE, total));
+        setStats({ found: totalFound, notFound: totalNotFound, keyChanges: totalKeyChanges, bpmChanges: totalBpmChanges, skippedBatches });
 
-        // Save this batch to DB immediately (incremental save)
+        // Save this batch to DB immediately
         const batchOverrides = (data.results as BatchResult[])
           .filter((r: BatchResult) => r.spotifyId)
           .map(toOverride);
@@ -127,34 +146,33 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ overrides: batchOverrides }),
           });
-          if (!saveResp.ok) {
-            const errData = await saveResp.json().catch(() => ({}));
-            throw new Error(errData.error || `Failed to save overrides: ${saveResp.status}`);
+          if (saveResp.ok) {
+            allOverridesRef.current = [...allOverridesRef.current, ...batchOverrides as SongOverride[]];
+            setSaved(allOverridesRef.current.length);
+            onOverridesApplied(allOverridesRef.current);
           }
-          allOverridesRef.current = [...allOverridesRef.current, ...batchOverrides as SongOverride[]];
-          setSaved(allOverridesRef.current.length);
+          // If save fails, just skip — data is still in Spotify, we can retry later
         }
-
-        // Notify parent incrementally so UI updates live
-        onOverridesApplied(allOverridesRef.current);
 
         if (!data.hasMore) break;
         offset += BATCH_SIZE;
 
         // Small delay between batches
         await new Promise(r => setTimeout(r, 300));
+      } catch {
+        // Completely unexpected error — skip batch and continue
+        skippedBatches++;
+        offset += BATCH_SIZE;
+        setProgress(Math.min(offset, total));
+        setStats({ found: totalFound, notFound: totalNotFound, keyChanges: totalKeyChanges, bpmChanges: totalBpmChanges, skippedBatches });
+        await new Promise(r => setTimeout(r, 5000));
       }
-
-      setState('done');
-    } catch (err) {
-      // Even on error, keep whatever we saved so far
-      if (allOverridesRef.current.length > 0) {
-        onOverridesApplied(allOverridesRef.current);
-      }
-      setError(err instanceof Error ? err.message : String(err));
-      setState('error');
     }
-  }, [onOverridesApplied]);
+
+    // Always finish — even if some batches were skipped
+    onOverridesApplied(allOverridesRef.current);
+    setState('done');
+  }, [onOverridesApplied, totalSongs]);
 
   const pct = totalSongs > 0 ? Math.round((progress / totalSongs) * 100) : 0;
 
@@ -188,6 +206,9 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
               <span>Not found: {stats.notFound}</span>
               <span>Key changes: {stats.keyChanges}</span>
               <span>BPM changes: {stats.bpmChanges}</span>
+              {stats.skippedBatches > 0 && (
+                <span style={{ color: 'var(--amber, #f0ad4e)' }}>Skipped: {stats.skippedBatches} batches</span>
+              )}
             </div>
           )}
         </div>
@@ -202,23 +223,14 @@ export default function SpotifyRefresh({ totalSongs, overrideCount, onOverridesA
             <span>Key changes: {stats.keyChanges}</span>
             <span>BPM changes: {stats.bpmChanges}</span>
             <span>Not found: {stats.notFound}</span>
+            {stats.skippedBatches > 0 && (
+              <span style={{ color: 'var(--amber, #f0ad4e)' }}>
+                {stats.skippedBatches} batches skipped (retry to fill gaps)
+              </span>
+            )}
           </div>
           <button style={styles.buttonSmall} onClick={() => setState('idle')}>
             Dismiss
-          </button>
-        </div>
-      )}
-
-      {state === 'error' && (
-        <div style={styles.errorArea}>
-          <div style={styles.errorText}>
-            {error}
-            {saved > 0 && (
-              <span style={styles.savedNote}> ({saved} songs saved before error)</span>
-            )}
-          </div>
-          <button style={styles.buttonSmall} onClick={runRefresh}>
-            Retry
           </button>
         </div>
       )}
