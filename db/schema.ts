@@ -70,6 +70,28 @@ export const workspaceState = sqliteTable('workspace_state', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 
+// ── Song Overrides (Spotify-sourced data) ───────────────────────────────────
+// Authoritative audio features from Spotify that override static catalog values
+
+export const songOverrides = sqliteTable('song_overrides', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  songId: text('song_id').notNull().unique(),
+  spotifyId: text('spotify_id'),
+  key: text('key'),                          // e.g. "F minor", "Bb major"
+  bpm: integer('bpm'),                       // rounded tempo
+  energy: real('energy'),                    // 0.0-1.0
+  danceability: real('danceability'),        // 0.0-1.0
+  valence: real('valence'),                  // 0.0-1.0 (musical positiveness)
+  acousticness: real('acousticness'),        // 0.0-1.0
+  instrumentalness: real('instrumentalness'), // 0.0-1.0
+  liveness: real('liveness'),               // 0.0-1.0
+  loudness: real('loudness'),               // dB (typically -60 to 0)
+  speechiness: real('speechiness'),         // 0.0-1.0
+  timeSignature: integer('time_signature'), // 3, 4, 5, 6, 7
+  durationMs: integer('duration_ms'),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+});
+
 // ── Easter Eggs ─────────────────────────────────────────────────────────────
 
 export const easterEggs = sqliteTable('easter_eggs', {

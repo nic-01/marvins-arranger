@@ -72,6 +72,48 @@ function formatKey(pitchClass: number, mode: number): string {
   return `${PITCH_CLASSES[pitchClass]} ${mode === 1 ? 'major' : 'minor'}`;
 }
 
+// Full audio features from Spotify
+interface SpotifyAudioFeatures {
+  id: string;
+  key: number;
+  mode: number;
+  tempo: number;
+  energy: number;
+  danceability: number;
+  valence: number;
+  acousticness: number;
+  instrumentalness: number;
+  liveness: number;
+  loudness: number;
+  speechiness: number;
+  time_signature: number;
+  duration_ms: number;
+}
+
+export interface SpotifyBatchResult {
+  id: string;
+  title: string;
+  artist: string;
+  spotifyId: string | null;
+  currentKey: string;
+  spotifyKey: string | null;
+  currentBpm: number;
+  spotifyBpm: number | null;
+  keyChanged: boolean;
+  bpmChanged: boolean;
+  // Extended audio features
+  energy: number | null;
+  danceability: number | null;
+  valence: number | null;
+  acousticness: number | null;
+  instrumentalness: number | null;
+  liveness: number | null;
+  loudness: number | null;
+  speechiness: number | null;
+  timeSignature: number | null;
+  durationMs: number | null;
+}
+
 export const maxDuration = 60; // Vercel Pro limit
 
 export async function GET(req: NextRequest) {
@@ -100,8 +142,8 @@ export async function GET(req: NextRequest) {
     await new Promise(r => setTimeout(r, 80));
   }
 
-  // Batch fetch audio features
-  const featureMap = new Map<string, { key: number; mode: number; tempo: number }>();
+  // Batch fetch audio features (full data)
+  const featureMap = new Map<string, SpotifyAudioFeatures>();
   const ids = spotifyIds.map(s => s.spotifyId);
 
   for (let i = 0; i < ids.length; i += 100) {
@@ -113,25 +155,36 @@ export async function GET(req: NextRequest) {
     if (resp.ok) {
       const data = await resp.json();
       for (const f of data.audio_features || []) {
-        if (f) featureMap.set(f.id, { key: f.key, mode: f.mode, tempo: f.tempo });
+        if (f) featureMap.set(f.id, f as SpotifyAudioFeatures);
       }
     }
   }
 
-  // Build results
-  const results = chunk.map(song => {
+  // Build results with full audio features
+  const results: SpotifyBatchResult[] = chunk.map(song => {
     const match = spotifyIds.find(s => s.songId === song.id);
     if (!match) {
       return {
         id: song.id,
         title: song.title,
         artist: song.artist,
+        spotifyId: null,
         currentKey: song.key,
         spotifyKey: null,
         spotifyBpm: null,
         currentBpm: song.bpm,
         keyChanged: false,
         bpmChanged: false,
+        energy: null,
+        danceability: null,
+        valence: null,
+        acousticness: null,
+        instrumentalness: null,
+        liveness: null,
+        loudness: null,
+        speechiness: null,
+        timeSignature: null,
+        durationMs: null,
       };
     }
 
@@ -141,12 +194,23 @@ export async function GET(req: NextRequest) {
         id: song.id,
         title: song.title,
         artist: song.artist,
+        spotifyId: match.spotifyId,
         currentKey: song.key,
         spotifyKey: null,
         spotifyBpm: null,
         currentBpm: song.bpm,
         keyChanged: false,
         bpmChanged: false,
+        energy: null,
+        danceability: null,
+        valence: null,
+        acousticness: null,
+        instrumentalness: null,
+        liveness: null,
+        loudness: null,
+        speechiness: null,
+        timeSignature: null,
+        durationMs: null,
       };
     }
 
@@ -157,12 +221,23 @@ export async function GET(req: NextRequest) {
       id: song.id,
       title: song.title,
       artist: song.artist,
+      spotifyId: match.spotifyId,
       currentKey: song.key,
       spotifyKey,
       spotifyBpm,
       currentBpm: song.bpm,
       keyChanged: spotifyKey !== song.key,
       bpmChanged: Math.abs(spotifyBpm - song.bpm) > 3,
+      energy: feat.energy,
+      danceability: feat.danceability,
+      valence: feat.valence,
+      acousticness: feat.acousticness,
+      instrumentalness: feat.instrumentalness,
+      liveness: feat.liveness,
+      loudness: feat.loudness,
+      speechiness: feat.speechiness,
+      timeSignature: feat.time_signature,
+      durationMs: feat.duration_ms,
     };
   });
 

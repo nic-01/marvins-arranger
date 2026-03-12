@@ -1,8 +1,8 @@
 import { getDb } from '@/db';
-import { medleySongs, songPreferences, blockPreferenceLog, easterEggs, workspaceState } from '@/db/schema';
+import { medleySongs, songPreferences, blockPreferenceLog, easterEggs, workspaceState, songOverrides } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { allSongs } from '@/lib/data';
-import type { MedleySong, EasterEgg, BlockPreferenceLog as BPL } from '@/lib/types';
+import type { MedleySong, EasterEgg, BlockPreferenceLog as BPL, SongOverride } from '@/lib/types';
 import { DEFAULT_EGGS } from '@/lib/default-eggs';
 import AppShell from './app-shell';
 
@@ -15,12 +15,13 @@ async function loadDbData() {
   const db = getDb();
   if (!db) return null;
 
-  const [medleyRows, prefRows, blockLogRows, eggRows, wsRows] = await Promise.all([
+  const [medleyRows, prefRows, blockLogRows, eggRows, wsRows, overrideRows] = await Promise.all([
     db.select().from(medleySongs).where(eq(medleySongs.userId, SHARED_USER_ID)).orderBy(medleySongs.sortOrder),
     db.select().from(songPreferences).where(eq(songPreferences.userId, SHARED_USER_ID)),
     db.select().from(blockPreferenceLog).where(eq(blockPreferenceLog.userId, SHARED_USER_ID)),
     db.select().from(easterEggs).where(eq(easterEggs.userId, SHARED_USER_ID)),
     db.select().from(workspaceState).where(eq(workspaceState.userId, SHARED_USER_ID)),
+    db.select().from(songOverrides),
   ]);
 
   const songMap = new Map(allSongs.map(s => [s.id, s]));
@@ -73,7 +74,24 @@ async function loadDbData() {
     initialWorkspaceState[row.stateKey] = row.value;
   }
 
-  return { initialMedleySongs, initialStarred, initialDeleted, initialBlockPrefLog, initialEggs, initialWorkspaceState };
+  const initialSongOverrides: SongOverride[] = overrideRows.map(row => ({
+    songId: row.songId,
+    spotifyId: row.spotifyId,
+    key: row.key,
+    bpm: row.bpm,
+    energy: row.energy,
+    danceability: row.danceability,
+    valence: row.valence,
+    acousticness: row.acousticness,
+    instrumentalness: row.instrumentalness,
+    liveness: row.liveness,
+    loudness: row.loudness,
+    speechiness: row.speechiness,
+    timeSignature: row.timeSignature,
+    durationMs: row.durationMs,
+  }));
+
+  return { initialMedleySongs, initialStarred, initialDeleted, initialBlockPrefLog, initialEggs, initialWorkspaceState, initialSongOverrides };
 }
 
 export default async function Page() {
@@ -92,6 +110,7 @@ export default async function Page() {
       initialBlockPrefLog={data?.initialBlockPrefLog ?? []}
       initialEggs={data?.initialEggs ?? DEFAULT_EGGS.map((egg) => ({ ...egg, id: Math.random().toString(36).substring(2, 10) }))}
       initialWorkspaceState={data?.initialWorkspaceState ?? {}}
+      initialSongOverrides={data?.initialSongOverrides ?? []}
     />
   );
 }

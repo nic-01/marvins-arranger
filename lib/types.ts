@@ -20,6 +20,24 @@ export interface Song {
   chords_chorus?: string; // Roman numeral progression, e.g. "I-V-VI-IV"
 }
 
+// Spotify-sourced audio features stored as DB overrides
+export interface SongOverride {
+  songId: string;
+  spotifyId: string | null;
+  key: string | null;
+  bpm: number | null;
+  energy: number | null;        // 0.0-1.0
+  danceability: number | null;  // 0.0-1.0
+  valence: number | null;       // 0.0-1.0 (musical positiveness)
+  acousticness: number | null;  // 0.0-1.0
+  instrumentalness: number | null; // 0.0-1.0
+  liveness: number | null;      // 0.0-1.0
+  loudness: number | null;      // dB
+  speechiness: number | null;   // 0.0-1.0
+  timeSignature: number | null; // 3, 4, 5, 6, 7
+  durationMs: number | null;
+}
+
 export interface MedleySong extends Song {
   medleyId: string;
   snippet_duration: number; // seconds, default 45

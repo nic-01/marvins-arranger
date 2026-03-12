@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef, useTransition } from 'react';
-import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog, BlockRating } from '@/lib/types';
+import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog, BlockRating, SongOverride } from '@/lib/types';
 import SongBrowser from '@/components/SongBrowser';
 import MedleyPlanner from '@/components/MedleyPlanner';
 import BlockGenerator from '@/components/BlockGenerator';
@@ -9,7 +9,8 @@ import EasterEggTracker from '@/components/EasterEggTracker';
 import { DEFAULT_EGGS } from '@/lib/default-eggs';
 import ArrangementView from '@/components/ArrangementView';
 import ExportPanel from '@/components/ExportPanel';
-import { allSongs } from '@/lib/data';
+import SpotifyRefresh from '@/components/SpotifyRefresh';
+import { allSongs as staticSongs } from '@/lib/data';
 import {
   saveMedleySongs,
   setSongPreference,
@@ -25,6 +26,32 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
+/** Map Spotify 0-1 float to our Low/Medium/High scale */
+function toLevel(val: number | null): 'Low' | 'Medium' | 'High' | undefined {
+  if (val === null || val === undefined) return undefined;
+  if (val < 0.33) return 'Low';
+  if (val < 0.66) return 'Medium';
+  return 'High';
+}
+
+/** Apply Spotify overrides on top of static catalog songs */
+function applySongOverrides(songs: Song[], overrides: SongOverride[]): Song[] {
+  if (overrides.length === 0) return songs;
+  const overrideMap = new Map(overrides.map(o => [o.songId, o]));
+  return songs.map(song => {
+    const o = overrideMap.get(song.id);
+    if (!o) return song;
+    return {
+      ...song,
+      key: o.key ?? song.key,
+      bpm: o.bpm ?? song.bpm,
+      energy: toLevel(o.energy) ?? song.energy,
+      danceability: toLevel(o.danceability) ?? song.danceability,
+      time_signature: o.timeSignature ? `${o.timeSignature}/4` : song.time_signature,
+    };
+  });
+}
+
 interface AppShellProps {
   initialMedleySongs: MedleySong[];
   initialStarred: string[];
@@ -32,6 +59,7 @@ interface AppShellProps {
   initialBlockPrefLog: BlockPreferenceLog[];
   initialEggs: EasterEgg[];
   initialWorkspaceState: Record<string, string>;
+  initialSongOverrides: SongOverride[];
 }
 
 export default function AppShell({
@@ -41,9 +69,22 @@ export default function AppShell({
   initialBlockPrefLog,
   initialEggs,
   initialWorkspaceState,
+  initialSongOverrides,
 }: AppShellProps) {
   const [stage, setStage] = useState<Stage>('songs');
   const [isPending, startTransition] = useTransition();
+
+  const [songOverrides, setSongOverrides] = useState<SongOverride[]>(initialSongOverrides);
+
+  // Merge Spotify overrides into the static catalog
+  const allSongs = useMemo(
+    () => applySongOverrides(staticSongs, songOverrides),
+    [songOverrides]
+  );
+
+  const handleOverridesApplied = useCallback((newOverrides: SongOverride[]) => {
+    setSongOverrides(newOverrides);
+  }, []);
 
   const [medleySongs, setMedleySongs] = useState<MedleySong[]>(initialMedleySongs);
   const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(initialEggs);
@@ -302,6 +343,13 @@ export default function AppShell({
       {/* Full-screen stage content — all stages stay mounted to preserve state */}
       <div style={styles.stageContent}>
         <div style={stage === 'songs' ? styles.stageVisible : styles.stageHidden}>
+          <div style={styles.songsToolbar}>
+            <SpotifyRefresh
+              totalSongs={staticSongs.length}
+              overrideCount={songOverrides.length}
+              onOverridesApplied={handleOverridesApplied}
+            />
+          </div>
           <SongBrowser
             songs={allSongs}
             onAddToMedley={handleAddToMedley}
@@ -461,6 +509,11 @@ const styles: Record<string, React.CSSProperties> = {
   headerStat: {
     fontSize: 11,
     color: 'var(--text-muted)',
+  },
+  songsToolbar: {
+    padding: '8px 12px',
+    borderBottom: '1px solid var(--border)',
+    flexShrink: 0,
   },
   stageContent: {
     flex: 1,
