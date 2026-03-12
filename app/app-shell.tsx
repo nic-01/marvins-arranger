@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef, useTransition } from 'react';
-import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog, BlockRating } from '@/lib/types';
+import type { Song, MedleySong, EasterEgg, SongPreference, SongPreferenceLog, BlockPreferenceLog, BlockRating, SongOverride } from '@/lib/types';
 import SongBrowser from '@/components/SongBrowser';
 import MedleyPlanner from '@/components/MedleyPlanner';
 import BlockGenerator from '@/components/BlockGenerator';
@@ -9,12 +9,15 @@ import EasterEggTracker from '@/components/EasterEggTracker';
 import { DEFAULT_EGGS } from '@/lib/default-eggs';
 import ArrangementView from '@/components/ArrangementView';
 import ExportPanel from '@/components/ExportPanel';
-import { allSongs } from '@/lib/data';
+import SpotifyRefresh from '@/components/SpotifyRefresh';
+import { allSongs as staticSongs } from '@/lib/data';
 import {
   saveMedleySongs,
   setSongPreference,
   addBlockRating,
   saveEasterEggs,
+  saveWorkspaceState,
+  clearWorkspaceState,
 } from './actions';
 
 type Stage = 'songs' | 'blocks' | 'arrange' | 'export';
@@ -23,12 +26,40 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
+/** Map Spotify 0-1 float to our Low/Medium/High scale */
+function toLevel(val: number | null): 'Low' | 'Medium' | 'High' | undefined {
+  if (val === null || val === undefined) return undefined;
+  if (val < 0.33) return 'Low';
+  if (val < 0.66) return 'Medium';
+  return 'High';
+}
+
+/** Apply Spotify overrides on top of static catalog songs */
+function applySongOverrides(songs: Song[], overrides: SongOverride[]): Song[] {
+  if (overrides.length === 0) return songs;
+  const overrideMap = new Map(overrides.map(o => [o.songId, o]));
+  return songs.map(song => {
+    const o = overrideMap.get(song.id);
+    if (!o) return song;
+    return {
+      ...song,
+      key: o.key ?? song.key,
+      bpm: o.bpm ?? song.bpm,
+      energy: toLevel(o.energy) ?? song.energy,
+      danceability: toLevel(o.danceability) ?? song.danceability,
+      time_signature: o.timeSignature ? `${o.timeSignature}/4` : song.time_signature,
+    };
+  });
+}
+
 interface AppShellProps {
   initialMedleySongs: MedleySong[];
   initialStarred: string[];
   initialDeleted: string[];
   initialBlockPrefLog: BlockPreferenceLog[];
   initialEggs: EasterEgg[];
+  initialWorkspaceState: Record<string, string>;
+  initialSongOverrides: SongOverride[];
 }
 
 export default function AppShell({
@@ -37,9 +68,23 @@ export default function AppShell({
   initialDeleted,
   initialBlockPrefLog,
   initialEggs,
+  initialWorkspaceState,
+  initialSongOverrides,
 }: AppShellProps) {
   const [stage, setStage] = useState<Stage>('songs');
   const [isPending, startTransition] = useTransition();
+
+  const [songOverrides, setSongOverrides] = useState<SongOverride[]>(initialSongOverrides);
+
+  // Merge Spotify overrides into the static catalog
+  const allSongs = useMemo(
+    () => applySongOverrides(staticSongs, songOverrides),
+    [songOverrides]
+  );
+
+  const handleOverridesApplied = useCallback((newOverrides: SongOverride[]) => {
+    setSongOverrides(newOverrides);
+  }, []);
 
   const [medleySongs, setMedleySongs] = useState<MedleySong[]>(initialMedleySongs);
   const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(initialEggs);
@@ -215,6 +260,18 @@ export default function AppShell({
     );
   }, []);
 
+  const handleSaveWorkspaceState = useCallback((key: string, value: string) => {
+    startTransition(async () => {
+      await saveWorkspaceState(key, value);
+    });
+  }, []);
+
+  const handleClearWorkspaceState = useCallback((key: string) => {
+    startTransition(async () => {
+      await clearWorkspaceState(key);
+    });
+  }, []);
+
   const handleAcceptBlockArrangement = useCallback((songs: Song[]) => {
     const medley = songs.map(s => ({
       ...s,
@@ -283,9 +340,16 @@ export default function AppShell({
         </div>
       </div>
 
-      {/* Full-screen stage content */}
+      {/* Full-screen stage content — all stages stay mounted to preserve state */}
       <div style={styles.stageContent}>
-        {stage === 'songs' && (
+        <div style={stage === 'songs' ? styles.stageVisible : styles.stageHidden}>
+          <div style={styles.songsToolbar}>
+            <SpotifyRefresh
+              totalSongs={staticSongs.length}
+              overrideCount={songOverrides.length}
+              onOverridesApplied={handleOverridesApplied}
+            />
+          </div>
           <SongBrowser
             songs={allSongs}
             onAddToMedley={handleAddToMedley}
@@ -298,9 +362,9 @@ export default function AppShell({
             onPreferenceChange={handlePreferenceChange}
             showPreferences
           />
-        )}
+        </div>
 
-        {stage === 'blocks' && (
+        <div style={stage === 'blocks' ? styles.stageVisible : styles.stageHidden}>
           <BlockGenerator
             catalog={allSongs}
             medleySongIds={medleySongIds}
@@ -310,10 +374,13 @@ export default function AppShell({
             onRateBlock={handleRateBlock}
             blockRatings={blockRatings}
             blockPrefLog={blockPrefLog}
+            initialWorkspaceState={initialWorkspaceState}
+            onSaveWorkspaceState={handleSaveWorkspaceState}
+            onClearWorkspaceState={handleClearWorkspaceState}
           />
-        )}
+        </div>
 
-        {stage === 'arrange' && (
+        <div style={stage === 'arrange' ? styles.stageVisible : styles.stageHidden}>
           <div style={styles.arrangeLayout}>
             <div style={styles.arrangeMain}>
               <MedleyPlanner
@@ -332,9 +399,9 @@ export default function AppShell({
               />
             </div>
           </div>
-        )}
+        </div>
 
-        {stage === 'export' && (
+        <div style={stage === 'export' ? styles.stageVisible : styles.stageHidden}>
           <div style={styles.exportLayout}>
             <div style={styles.exportMain}>
               <ExportPanel songs={medleySongs} eggs={easterEggs} />
@@ -348,7 +415,7 @@ export default function AppShell({
               />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -443,11 +510,26 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     color: 'var(--text-muted)',
   },
+  songsToolbar: {
+    padding: '8px 12px',
+    borderBottom: '1px solid var(--border)',
+    flexShrink: 0,
+  },
   stageContent: {
     flex: 1,
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    position: 'relative',
+  },
+  stageVisible: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    flex: 1,
+    overflow: 'hidden',
+  },
+  stageHidden: {
+    display: 'none',
   },
   arrangeLayout: {
     display: 'flex',

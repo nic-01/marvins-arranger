@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Song, BlockRating, BlockPreferenceLog } from '@/lib/types';
 import { getCamelotCode, getCamelotColor } from '@/lib/camelot';
 import {
@@ -20,6 +20,14 @@ import {
   type PairDiscoveryResult,
   type PairDiscoveryProgress,
 } from '@/lib/pair-scoring';
+import {
+  serializePairResult,
+  deserializePairResult,
+  serializeDiscoveryResult,
+  deserializeDiscoveryResult,
+  serializeAssembly,
+  deserializeAssembly,
+} from '@/lib/workspace-serialization';
 
 interface BlockGeneratorProps {
   catalog: Song[];
@@ -30,6 +38,9 @@ interface BlockGeneratorProps {
   onRateBlock?: (log: BlockPreferenceLog) => void;
   blockRatings?: Map<string, BlockRating>;
   blockPrefLog?: BlockPreferenceLog[];
+  initialWorkspaceState?: Record<string, string>;
+  onSaveWorkspaceState?: (key: string, value: string) => void;
+  onClearWorkspaceState?: (key: string) => void;
 }
 
 const QUALITY_COLORS: Record<TransitionQuality, string> = {
@@ -84,18 +95,72 @@ function buildBlockPreferenceLog(block: Block, rating: BlockRating): BlockPrefer
   };
 }
 
-export default function BlockGenerator({ catalog, medleySongIds, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings, blockPrefLog = [] }: BlockGeneratorProps) {
-  const [discoveryResult, setDiscoveryResult] = useState<BlockDiscoveryResult | null>(null);
-  const [pairResult, setPairResult] = useState<PairDiscoveryResult | null>(null);
-  const [assembly, setAssembly] = useState<AssembledMedley | null>(null);
+export default function BlockGenerator({ catalog, medleySongIds, starredIds, deletedIds, onAcceptArrangement, onRateBlock, blockRatings, blockPrefLog = [], initialWorkspaceState = {}, onSaveWorkspaceState, onClearWorkspaceState }: BlockGeneratorProps) {
+  // Build song map for deserialization
+  const songMap = useMemo(() => new Map(catalog.map(s => [s.id, s])), [catalog]);
+
+  // Restore state from workspace (Turso) on initial mount
+  const [discoveryResult, setDiscoveryResult] = useState<BlockDiscoveryResult | null>(() => {
+    const json = initialWorkspaceState['discoveryResult'];
+    return json ? deserializeDiscoveryResult(json, songMap) : null;
+  });
+  const [pairResult, setPairResult] = useState<PairDiscoveryResult | null>(() => {
+    const json = initialWorkspaceState['pairResult'];
+    return json ? deserializePairResult(json, songMap) : null;
+  });
+  const [assembly, setAssembly] = useState<AssembledMedley | null>(() => {
+    const json = initialWorkspaceState['assembly'];
+    return json ? deserializeAssembly(json, songMap) : null;
+  });
   const [progressMsg, setProgressMsg] = useState<string>('');
   const [running, setRunning] = useState(false);
   const [expandedBlock, setExpandedBlock] = useState<string | null>(null);
   const [expandedPair, setExpandedPair] = useState<string | null>(null);
   const [selectedTransition, setSelectedTransition] = useState<PairScore | null>(null);
-  const [viewMode, setViewMode] = useState<'pairs' | 'discovery' | 'assembly'>('pairs');
+  const [viewMode, setViewMode] = useState<'pairs' | 'discovery' | 'assembly'>(() => {
+    const saved = initialWorkspaceState['viewMode'];
+    if (saved === 'discovery' || saved === 'assembly' || saved === 'pairs') return saved;
+    return 'pairs';
+  });
   const [pairDecadeFilter, setPairDecadeFilter] = useState<string>('all');
   const [pairSortBy, setPairSortBy] = useState<'composite' | 'algo' | 'llm'>('composite');
+
+  // ── Persist state to Turso on change (debounced) ───────────────────────
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const persistState = useCallback((key: string, value: string | null) => {
+    if (!onSaveWorkspaceState) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      if (value === null) {
+        onClearWorkspaceState?.(key);
+      } else {
+        onSaveWorkspaceState(key, value);
+      }
+    }, 1000);
+  }, [onSaveWorkspaceState, onClearWorkspaceState]);
+
+  useEffect(() => {
+    if (pairResult) {
+      persistState('pairResult', serializePairResult(pairResult));
+    }
+  }, [pairResult, persistState]);
+
+  useEffect(() => {
+    if (discoveryResult) {
+      persistState('discoveryResult', serializeDiscoveryResult(discoveryResult));
+    }
+  }, [discoveryResult, persistState]);
+
+  useEffect(() => {
+    if (assembly) {
+      persistState('assembly', serializeAssembly(assembly));
+    }
+  }, [assembly, persistState]);
+
+  useEffect(() => {
+    persistState('viewMode', viewMode);
+  }, [viewMode, persistState]);
 
   // When the user has added songs to the medley, only use those; otherwise use full catalog
   const effectiveCatalog = useMemo(() => {
