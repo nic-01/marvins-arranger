@@ -10,6 +10,9 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 import { allSongs } from '@/lib/data';
+import { getDb } from '@/db';
+import { songOverrides } from '@/db/schema';
+import { inArray } from 'drizzle-orm';
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
@@ -58,30 +61,106 @@ async function runWithConcurrency<T, R>(
   return results;
 }
 
+function normalizeForMatch(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/\b(feat|ft|featuring)\b\.?/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function titleVariants(title: string): string[] {
+  const raw = title.trim();
+  const variants = new Set<string>([raw]);
+
+  // Strip bracketed qualifiers like "(Remix)" / "[Live]"
+  variants.add(raw.replace(/\s*[\(\[].*?[\)\]]\s*/g, ' ').replace(/\s+/g, ' ').trim());
+  // Strip common dash suffixes like " - Remaster 2011"
+  variants.add(raw.replace(/\s[-–]\s.*$/, '').trim());
+
+  return [...variants].filter(Boolean);
+}
+
+function primaryArtist(artist: string): string {
+  return artist
+    .split(/,|&|\band\b|\bfeat\b|\bft\b|\bwith\b|\bx\b/i)[0]
+    .trim();
+}
+
+function scoreCandidate(
+  wantedTitle: string,
+  wantedArtist: string,
+  candidateTitle: string,
+  candidateArtists: string[],
+): number {
+  const wt = normalizeForMatch(wantedTitle);
+  const wa = normalizeForMatch(wantedArtist);
+  const ct = normalizeForMatch(candidateTitle);
+  const ca = normalizeForMatch(candidateArtists.join(' '));
+
+  let score = 0;
+  if (ct === wt) score += 70;
+  else if (ct.includes(wt) || wt.includes(ct)) score += 45;
+
+  if (ca.includes(wa) || wa.includes(ca)) score += 50;
+
+  const wantedTokens = new Set(wt.split(' ').filter(Boolean));
+  const titleOverlap = ct.split(' ').filter(t => wantedTokens.has(t)).length;
+  score += Math.min(20, titleOverlap * 4);
+
+  return score;
+}
+
 async function searchTrack(token: string, title: string, artist: string): Promise<string | null> {
-  const cleanTitle = title.replace(/\s*\(.*?\)\s*/g, ' ').trim();
-  const query = encodeURIComponent(`track:${cleanTitle} artist:${artist}`);
+  const titleOptions = titleVariants(title);
+  const artistMain = primaryArtist(artist);
+  const queries: string[] = [];
 
-  const resp = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=5`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!resp.ok) {
-    // Avoid long blocking retries in serverless functions; just skip and continue.
-    if (resp.status === 429) return null;
-    return null;
+  for (const t of titleOptions) {
+    queries.push(`track:${t} artist:${artistMain}`);
+    queries.push(`track:${t} ${artistMain}`);
+    queries.push(`track:${t}`);
   }
 
-  const data = await resp.json();
-  const tracks = data.tracks?.items;
-  if (!tracks?.length) return null;
+  let bestId: string | null = null;
+  let bestScore = -1;
 
-  const artistLower = artist.toLowerCase();
-  const best = tracks.find((t: { artists: Array<{ name: string }> }) =>
-    t.artists.some((a: { name: string }) => a.name.toLowerCase() === artistLower)
-  ) || tracks[0];
+  for (const q of queries) {
+    const query = encodeURIComponent(q);
+    const resp = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=10`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-  return best.id;
+    if (!resp.ok) {
+      if (resp.status === 429) continue;
+      continue;
+    }
+
+    const data = await resp.json();
+    const tracks = data.tracks?.items as Array<{
+      id: string;
+      name: string;
+      artists: Array<{ name: string }>;
+    }> | undefined;
+    if (!tracks?.length) continue;
+
+    for (const t of tracks) {
+      const score = scoreCandidate(title, artistMain, t.name, t.artists.map(a => a.name));
+      if (score > bestScore) {
+        bestScore = score;
+        bestId = t.id;
+      }
+    }
+
+    // Early exit once we have a strong candidate.
+    if (bestScore >= 85) break;
+  }
+
+  return bestId;
 }
 
 function formatKey(pitchClass: number, mode: number): string {
@@ -144,9 +223,27 @@ export async function GET(req: NextRequest) {
 
   const token = await getAccessToken();
 
-  // Search tracks concurrently to stay within function timeout budgets.
+  // Step 1: Reuse previously resolved Spotify IDs from DB when available.
+  const knownBySongId = new Map<string, string>();
+  const db = getDb();
+  if (db && chunk.length > 0) {
+    const songIds = chunk.map(s => s.id);
+    const existing = await db
+      .select({
+        songId: songOverrides.songId,
+        spotifyId: songOverrides.spotifyId,
+      })
+      .from(songOverrides)
+      .where(inArray(songOverrides.songId, songIds));
+    for (const row of existing) {
+      if (row.spotifyId) knownBySongId.set(row.songId, row.spotifyId);
+    }
+  }
+
+  // Step 2: Search Spotify only for songs without a known ID.
+  const unresolved = chunk.filter(song => !knownBySongId.has(song.id));
   const searchResults = await runWithConcurrency(
-    chunk,
+    unresolved,
     async (song) => {
       const sid = await searchTrack(token, song.title, song.artist);
       return { songId: song.id, spotifyId: sid };
@@ -154,12 +251,16 @@ export async function GET(req: NextRequest) {
     6,
   );
 
-  const spotifyIds: Array<{ songId: string; spotifyId: string }> = [];
+  const spotifyIdsBySong = new Map<string, string>(knownBySongId);
   const notFound: string[] = [];
   for (const result of searchResults) {
-    if (result.spotifyId) spotifyIds.push({ songId: result.songId, spotifyId: result.spotifyId });
+    if (result.spotifyId) spotifyIdsBySong.set(result.songId, result.spotifyId);
     else notFound.push(result.songId);
   }
+
+  const spotifyIds: Array<{ songId: string; spotifyId: string }> = chunk
+    .map(song => ({ songId: song.id, spotifyId: spotifyIdsBySong.get(song.id) }))
+    .filter((v): v is { songId: string; spotifyId: string } => Boolean(v.spotifyId));
 
   // Batch fetch audio features (full data)
   const featureMap = new Map<string, SpotifyAudioFeatures>();
@@ -181,8 +282,8 @@ export async function GET(req: NextRequest) {
 
   // Build results with full audio features
   const results: SpotifyBatchResult[] = chunk.map(song => {
-    const match = spotifyIds.find(s => s.songId === song.id);
-    if (!match) {
+    const spotifyId = spotifyIdsBySong.get(song.id) ?? null;
+    if (!spotifyId) {
       return {
         id: song.id,
         title: song.title,
@@ -207,13 +308,13 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const feat = featureMap.get(match.spotifyId);
+    const feat = featureMap.get(spotifyId);
     if (!feat) {
       return {
         id: song.id,
         title: song.title,
         artist: song.artist,
-        spotifyId: match.spotifyId,
+        spotifyId,
         currentKey: song.key,
         spotifyKey: null,
         spotifyBpm: null,
@@ -240,7 +341,7 @@ export async function GET(req: NextRequest) {
       id: song.id,
       title: song.title,
       artist: song.artist,
-      spotifyId: match.spotifyId,
+      spotifyId,
       currentKey: song.key,
       spotifyKey,
       spotifyBpm,
@@ -269,7 +370,7 @@ export async function GET(req: NextRequest) {
     notFound,
     stats: {
       processed: chunk.length,
-      found: spotifyIds.length,
+      found: spotifyIdsBySong.size,
       notFound: notFound.length,
       keyChanges: results.filter(r => r.keyChanged).length,
       bpmChanges: results.filter(r => r.bpmChanged).length,

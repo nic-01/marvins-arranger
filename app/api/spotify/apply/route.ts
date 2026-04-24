@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing overrides array' }, { status: 400 });
   }
 
-  // Filter to only songs that have Spotify data
-  const valid = overrides.filter(o => o.spotifyId && (o.key || o.bpm));
+  // Keep rows that at least resolved a Spotify ID; metrics can be filled on later refreshes.
+  const valid = overrides.filter(o => Boolean(o.spotifyId));
 
   let saved = 0;
   for (const o of valid) {
