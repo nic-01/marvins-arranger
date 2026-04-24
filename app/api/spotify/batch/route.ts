@@ -38,6 +38,26 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+async function runWithConcurrency<T, R>(
+  items: T[],
+  worker: (item: T) => Promise<R>,
+  concurrency: number,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let idx = 0;
+
+  async function runner() {
+    while (idx < items.length) {
+      const current = idx++;
+      results[current] = await worker(items[current]);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => runner());
+  await Promise.all(workers);
+  return results;
+}
+
 async function searchTrack(token: string, title: string, artist: string): Promise<string | null> {
   const cleanTitle = title.replace(/\s*\(.*?\)\s*/g, ' ').trim();
   const query = encodeURIComponent(`track:${cleanTitle} artist:${artist}`);
@@ -47,11 +67,8 @@ async function searchTrack(token: string, title: string, artist: string): Promis
   });
 
   if (!resp.ok) {
-    if (resp.status === 429) {
-      const wait = parseInt(resp.headers.get('retry-after') || '3', 10);
-      await new Promise(r => setTimeout(r, wait * 1000));
-      return searchTrack(token, title, artist);
-    }
+    // Avoid long blocking retries in serverless functions; just skip and continue.
+    if (resp.status === 429) return null;
     return null;
   }
 
@@ -127,19 +144,21 @@ export async function GET(req: NextRequest) {
 
   const token = await getAccessToken();
 
-  // Search for each track
+  // Search tracks concurrently to stay within function timeout budgets.
+  const searchResults = await runWithConcurrency(
+    chunk,
+    async (song) => {
+      const sid = await searchTrack(token, song.title, song.artist);
+      return { songId: song.id, spotifyId: sid };
+    },
+    6,
+  );
+
   const spotifyIds: Array<{ songId: string; spotifyId: string }> = [];
   const notFound: string[] = [];
-
-  for (const song of chunk) {
-    const sid = await searchTrack(token, song.title, song.artist);
-    if (sid) {
-      spotifyIds.push({ songId: song.id, spotifyId: sid });
-    } else {
-      notFound.push(song.id);
-    }
-    // Small delay
-    await new Promise(r => setTimeout(r, 80));
+  for (const result of searchResults) {
+    if (result.spotifyId) spotifyIds.push({ songId: result.songId, spotifyId: result.spotifyId });
+    else notFound.push(result.songId);
   }
 
   // Batch fetch audio features (full data)
