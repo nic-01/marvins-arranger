@@ -116,7 +116,11 @@ function scoreCandidate(
   return score;
 }
 
-async function searchTrack(token: string, title: string, artist: string): Promise<string | null> {
+async function searchTrack(
+  token: string,
+  title: string,
+  artist: string,
+): Promise<{ spotifyId: string | null; rateLimited: boolean }> {
   const titleOptions = titleVariants(title);
   const artistMain = primaryArtist(artist);
   const queries: string[] = [];
@@ -129,6 +133,7 @@ async function searchTrack(token: string, title: string, artist: string): Promis
 
   let bestId: string | null = null;
   let bestScore = -1;
+  let rateLimited = false;
 
   for (const q of queries) {
     const query = encodeURIComponent(q);
@@ -137,7 +142,13 @@ async function searchTrack(token: string, title: string, artist: string): Promis
     });
 
     if (!resp.ok) {
-      if (resp.status === 429) continue;
+      if (resp.status === 429) {
+        rateLimited = true;
+        const retryAfter = Number(resp.headers.get('retry-after') || '1');
+        const waitMs = Math.max(200, Math.min(1000, retryAfter * 1000));
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+        continue;
+      }
       continue;
     }
 
@@ -161,7 +172,7 @@ async function searchTrack(token: string, title: string, artist: string): Promis
     if (bestScore >= 85) break;
   }
 
-  return bestId;
+  return { spotifyId: bestId, rateLimited };
 }
 
 function formatKey(pitchClass: number, mode: number): string {
@@ -246,16 +257,18 @@ export async function GET(req: NextRequest) {
   const searchResults = await runWithConcurrency(
     unresolved,
     async (song) => {
-      const sid = await searchTrack(token, song.title, song.artist);
-      return { songId: song.id, spotifyId: sid };
+      const search = await searchTrack(token, song.title, song.artist);
+      return { songId: song.id, spotifyId: search.spotifyId, rateLimited: search.rateLimited };
     },
-    6,
+    2,
   );
 
   const spotifyIdsBySong = new Map<string, string>(knownBySongId);
   const notFound: string[] = [];
+  const rateLimited: string[] = [];
   for (const result of searchResults) {
     if (result.spotifyId) spotifyIdsBySong.set(result.songId, result.spotifyId);
+    else if (result.rateLimited) rateLimited.push(result.songId);
     else notFound.push(result.songId);
   }
 
@@ -369,12 +382,18 @@ export async function GET(req: NextRequest) {
     limit,
     hasMore: offset + limit < allSongs.length,
     notFound,
+    rateLimited,
     stats: {
       processed: chunk.length,
       found: spotifyIdsBySong.size,
       notFound: notFound.length,
+      rateLimited: rateLimited.length,
       keyChanges: results.filter(r => r.keyChanged).length,
       bpmChanges: results.filter(r => r.bpmChanged).length,
+    },
+    debug: {
+      market: SPOTIFY_MARKET,
+      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || null,
     },
   });
 }
