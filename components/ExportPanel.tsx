@@ -77,7 +77,7 @@ function exportAsMarkdown(songs: MedleySong[], eggs: EasterEgg[]): string {
 }
 
 function exportAsCsv(songs: MedleySong[]): string {
-  const headers = ['Year', 'Title', 'Artist', 'BPM', 'Key', 'Camelot', 'Genre', 'Energy', 'Section', 'Bars', 'Duration (s)', 'Transition', 'Vocal Gender', 'Horn Friendly', 'Keyboard Driven', 'Guitar Driven', 'Crowd Moment', 'Easter Egg', 'Notes'];
+  const headers = ['Year', 'Title', 'Artist', 'Spotify Tempo', 'Spotify Key', 'Spotify Camelot', 'Spotify Energy', 'Spotify Danceability', 'Spotify Valence', 'Spotify Acousticness', 'Spotify Instrumentalness', 'Spotify Liveness', 'Spotify Loudness', 'Spotify Speechiness', 'Spotify Time Signature', 'Spotify Duration (ms)', 'Bars', 'Duration (s)', 'Transition', 'Vocal Gender', 'Horn Friendly', 'Keyboard Driven', 'Guitar Driven', 'Crowd Moment', 'Easter Egg', 'Notes'];
   const lines = [headers.join(',')];
 
   songs.forEach((song) => {
@@ -88,9 +88,16 @@ function exportAsCsv(songs: MedleySong[]): string {
       song.bpm,
       `"${song.key}"`,
       getCamelotCode(song.key),
-      `"${song.genre}"`,
-      song.energy,
-      song.section || 'chorus',
+      song.spotify_energy ?? '',
+      song.spotify_danceability ?? '',
+      song.spotify_valence ?? '',
+      song.spotify_acousticness ?? '',
+      song.spotify_instrumentalness ?? '',
+      song.spotify_liveness ?? '',
+      song.spotify_loudness ?? '',
+      song.spotify_speechiness ?? '',
+      song.spotify_time_signature ?? '',
+      song.spotify_duration_ms ?? '',
       song.bar_count || 16,
       song.snippet_duration,
       song.transition_in || 'hard_cut',

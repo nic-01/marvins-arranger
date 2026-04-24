@@ -18,6 +18,17 @@ export interface Song {
   notes: string;
   chords_verse?: string;  // Roman numeral progression, e.g. "I-VI-IV-V"
   chords_chorus?: string; // Roman numeral progression, e.g. "I-V-VI-IV"
+  // Optional raw Spotify audio feature values for UI/export.
+  spotify_energy?: number;
+  spotify_danceability?: number;
+  spotify_valence?: number;
+  spotify_acousticness?: number;
+  spotify_instrumentalness?: number;
+  spotify_liveness?: number;
+  spotify_loudness?: number;
+  spotify_speechiness?: number;
+  spotify_time_signature?: number;
+  spotify_duration_ms?: number;
 }
 
 // Spotify-sourced audio features stored as DB overrides

@@ -48,6 +48,16 @@ function applySongOverrides(songs: Song[], overrides: SongOverride[]): Song[] {
       energy: toLevel(o.energy) ?? song.energy,
       danceability: toLevel(o.danceability) ?? song.danceability,
       time_signature: o.timeSignature ? `${o.timeSignature}/4` : song.time_signature,
+      spotify_energy: o.energy ?? undefined,
+      spotify_danceability: o.danceability ?? undefined,
+      spotify_valence: o.valence ?? undefined,
+      spotify_acousticness: o.acousticness ?? undefined,
+      spotify_instrumentalness: o.instrumentalness ?? undefined,
+      spotify_liveness: o.liveness ?? undefined,
+      spotify_loudness: o.loudness ?? undefined,
+      spotify_speechiness: o.speechiness ?? undefined,
+      spotify_time_signature: o.timeSignature ?? undefined,
+      spotify_duration_ms: o.durationMs ?? undefined,
     };
   });
 }

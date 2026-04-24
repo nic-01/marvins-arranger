@@ -41,6 +41,11 @@ function getDecadeColor(decade: string): string {
 type SortField = 'year' | 'title' | 'artist' | 'bpm' | 'key' | 'energy';
 type SortDir = 'asc' | 'desc';
 
+function formatSpotifyScore(value?: number): string {
+  if (value === undefined || value === null) return '—';
+  return `${Math.round(value * 100)}%`;
+}
+
 export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, onBulkAdd, onBulkRemove, medleySongIds, starredIds, deletedIds, onPreferenceChange, showPreferences }: SongBrowserProps) {
   const [filters, setFilters] = useState<Filters>({
     decade: 'All',
@@ -243,9 +248,13 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
               <th style={styles.th} onClick={() => handleSort('year')}>Year{sortIcon('year')}</th>
               <th style={{ ...styles.th, textAlign: 'left' as const }} onClick={() => handleSort('title')}>Title{sortIcon('title')}</th>
               <th style={{ ...styles.th, textAlign: 'left' as const }} onClick={() => handleSort('artist')}>Artist{sortIcon('artist')}</th>
-              <th style={styles.th} onClick={() => handleSort('bpm')}>BPM{sortIcon('bpm')}</th>
+              <th style={styles.th} onClick={() => handleSort('bpm')}>Tempo{sortIcon('bpm')}</th>
               <th style={styles.th} onClick={() => handleSort('key')}>Key{sortIcon('key')}</th>
+              <th style={styles.th}>Camelot</th>
               <th style={styles.th} onClick={() => handleSort('energy')}>Energy{sortIcon('energy')}</th>
+              <th style={styles.th}>Danceability</th>
+              <th style={styles.th}>Valence</th>
+              <th style={styles.th}>Time Sig</th>
             </tr>
           </thead>
           <tbody>
@@ -311,14 +320,18 @@ export default function SongBrowser({ songs, onAddToMedley, onRemoveFromMedley, 
                       {song.key}
                     </span>
                   </td>
+                  <td style={styles.td}>{getCamelotCode(song.key)}</td>
                   <td style={styles.td}>
                     <span style={{
                       ...styles.energyBadge,
                       background: song.energy === 'High' ? 'var(--red)' : song.energy === 'Medium' ? 'var(--amber)' : 'var(--green)',
                     }}>
-                      {song.energy}
+                      {formatSpotifyScore(song.spotify_energy) !== '—' ? formatSpotifyScore(song.spotify_energy) : song.energy}
                     </span>
                   </td>
+                  <td style={styles.td}>{formatSpotifyScore(song.spotify_danceability)}</td>
+                  <td style={styles.td}>{formatSpotifyScore(song.spotify_valence)}</td>
+                  <td style={styles.td}>{song.spotify_time_signature ? `${song.spotify_time_signature}/4` : '—'}</td>
                 </tr>
               );
             })}
