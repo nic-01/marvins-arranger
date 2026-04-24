@@ -200,6 +200,7 @@ function serializeBlock(block: Block) {
     worstTransition: block.worstTransition,
     hasMashup: block.hasMashup,
     hasCrowdMoment: block.hasCrowdMoment,
+    yearRange: block.yearRange,
   };
 }
 
@@ -213,6 +214,11 @@ function deserializeBlock(
     if (!song) return null; // Can't reconstruct block with missing songs
     songs.push(song);
   }
+
+  const fallbackYearRange: [number, number] = [
+    Math.min(...songs.map(s => s.year)),
+    Math.max(...songs.map(s => s.year)),
+  ];
 
   return {
     id: data.id,
@@ -230,6 +236,7 @@ function deserializeBlock(
     worstTransition: data.worstTransition ? rehydratePairScore(data.worstTransition, songMap) : null,
     hasMashup: data.hasMashup,
     hasCrowdMoment: data.hasCrowdMoment,
+    yearRange: data.yearRange ?? fallbackYearRange,
   };
 }
 
