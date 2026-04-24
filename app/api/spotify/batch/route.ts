@@ -16,6 +16,7 @@ import { inArray } from 'drizzle-orm';
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+const SPOTIFY_MARKET = process.env.SPOTIFY_MARKET || 'US';
 
 const PITCH_CLASSES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
 
@@ -131,7 +132,7 @@ async function searchTrack(token: string, title: string, artist: string): Promis
 
   for (const q of queries) {
     const query = encodeURIComponent(q);
-    const resp = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=10`, {
+    const resp = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=10&market=${encodeURIComponent(SPOTIFY_MARKET)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
